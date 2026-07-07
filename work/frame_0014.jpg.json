@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "YES: [626,239,893,775] [BEAUTIFUL BEAUTIFUL DANCING QUEEN] [DARK]",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783465020,
+  "id": "20260708065658b0851c63031c4372",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260708065658b0851c63031c4372",
+  "usage": {
+    "completion_tokens": 37,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2746,
+    "prompt_tokens_details": {
+      "cached_tokens": 6
+    },
+    "total_tokens": 2783
+  }
+}

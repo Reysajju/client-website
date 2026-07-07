@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "YES: [625,252,893,482] [BEAUTIFUL B] [DARK]",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783465001,
+  "id": "20260708065638c90960a1769e4a6c",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260708065638c90960a1769e4a6c",
+  "usage": {
+    "completion_tokens": 29,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2746,
+    "prompt_tokens_details": {
+      "cached_tokens": 6
+    },
+    "total_tokens": 2775
+  }
+}

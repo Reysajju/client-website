@@ -189,39 +189,74 @@ function Nav() {
 
 /* ─── Hero Section ─── */
 function HeroSection() {
+  const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const rafRef = useRef<number>(0);
   const [isMuted, setIsMuted] = useState(false);
 
+  /* ── Autoplay: try unmuted, fall back to muted + auto-unmute on first gesture ── */
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    // Start unmuted, then attempt to unmute after first user gesture
     video.muted = false;
+    video.volume = 1;
     video.play().catch(() => {
-      // Browser blocked autoplay without mute — fall back to muted
       video.muted = true;
       setIsMuted(true);
-      // Retry unmute on first interaction
-      const unmuteOnInteraction = () => {
+      const unmute = () => {
         video.muted = false;
+        video.volume = 1;
         setIsMuted(false);
-        document.removeEventListener("click", unmuteOnInteraction);
-        document.removeEventListener("touchstart", unmuteOnInteraction);
+        document.removeEventListener("click", unmute);
+        document.removeEventListener("touchstart", unmute);
       };
-      document.addEventListener("click", unmuteOnInteraction, { once: true });
-      document.addEventListener("touchstart", unmuteOnInteraction, { once: true });
+      document.addEventListener("click", unmute, { once: true });
+      document.addEventListener("touchstart", unmute, { once: true });
     });
   }, []);
+
+  /* ── Fade video audio as user scrolls away from hero ── */
+  useEffect(() => {
+    const video = videoRef.current;
+    const section = sectionRef.current;
+    if (!video || !section) return;
+
+    const onScroll = () => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        const rect = section.getBoundingClientRect();
+        // rect.top goes from 0 (section top at viewport top) to negative as we scroll past
+        // Hero is 100vh, so when rect.bottom <= 0 the section is fully scrolled past
+        const heroHeight = rect.height;
+        // scrolled fraction: 0 = at top, 1 = fully out of view
+        const scrolled = Math.max(0, Math.min(1, -rect.bottom / heroHeight));
+        // Start fading once the bottom edge enters the viewport, fully silent when section gone
+        // Fade zone: from 0% scrolled (section fully visible) to 100% scrolled (fully gone)
+        video.volume = Math.max(0, 1 - scrolled);
+        // If effectively silent, just mute to save resources
+        if (video.volume < 0.01) video.muted = true;
+        else if (isMuted === false) video.muted = false;
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [isMuted]);
 
   const toggleMute = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     video.muted = !video.muted;
     setIsMuted(video.muted);
+    if (!video.muted) video.volume = 1;
   }, []);
 
   return (
     <section
+      ref={sectionRef}
       id="home"
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
@@ -236,19 +271,44 @@ function HeroSection() {
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      {/* Gradient overlay so text stays readable */}
+      {/* ─── Layer 1: Edge tint (lets video breathe at edges) ─── */}
       <div
-        className="absolute inset-0 z-[1]"
+        className="absolute inset-0 z-[1] pointer-events-none"
         style={{
           background:
-            "linear-gradient(160deg, rgba(74,40,72,0.72) 0%, rgba(107,58,107,0.55) 30%, rgba(155,122,138,0.40) 60%, rgba(212,168,83,0.50) 100%)",
+            "linear-gradient(to bottom, rgba(74,40,72,0.30) 0%, transparent 20%, transparent 80%, rgba(74,40,72,0.50) 100%)",
+        }}
+      />
+
+      {/* ─── Layer 2: Center text-safe zone — strong dark band to block ALL video text ─── */}
+      <div
+        className="absolute inset-0 z-[2] pointer-events-none"
+        style={{
+          background: `
+            radial-gradient(
+              ellipse 70% 60% at 50% 45%,
+              rgba(30,15,30,0.88) 0%,
+              rgba(50,25,50,0.75) 40%,
+              rgba(74,40,72,0.50) 65%,
+              transparent 85%
+            )
+          `,
+        }}
+      />
+
+      {/* ─── Layer 3: Subtle color accent at corners ─── */}
+      <div
+        className="absolute inset-0 z-[3] pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(212,168,83,0.08) 0%, transparent 40%, transparent 60%, rgba(200,180,216,0.06) 100%)",
         }}
       />
 
       <StarField />
 
       {/* Decorative floating circles */}
-      <div className="absolute inset-0 z-[2] overflow-hidden pointer-events-none" aria-hidden="true">
+      <div className="absolute inset-0 z-[4] overflow-hidden pointer-events-none" aria-hidden="true">
         <div
           className="absolute w-64 h-64 rounded-full opacity-10 animate-drift"
           style={{ background: "radial-gradient(circle, #F0D68A 0%, transparent 70%)", top: "10%", left: "-5%" }}
@@ -265,25 +325,42 @@ function HeroSection() {
 
       {/* ─── Content ─── */}
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-        <p className="text-golden-light/80 text-sm md:text-base tracking-[0.3em] uppercase mb-4 animate-fade-in-up">
+        <p
+          className="text-golden-light/90 text-sm md:text-base tracking-[0.3em] uppercase mb-5 animate-fade-in-up"
+          style={{
+            textShadow: "0 2px 12px rgba(0,0,0,0.7), 0 0px 4px rgba(0,0,0,0.5)",
+          }}
+        >
           A Bedtime Story by Mémère
         </p>
-        <h1 className="text-5xl sm:text-6xl md:text-8xl font-bold text-white leading-tight mb-6 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+        <h1
+          className="text-5xl sm:text-6xl md:text-8xl font-bold text-white leading-tight mb-6 animate-fade-in-up"
+          style={{
+            animationDelay: "0.2s",
+            textShadow: "0 4px 30px rgba(0,0,0,0.85), 0 2px 10px rgba(0,0,0,0.6), 0 0px 60px rgba(74,40,72,0.4)",
+          }}
+        >
           The Dancing
           <br />
-          <span className="text-golden-light">Queen</span>
+          <span className="text-golden-light" style={{ textShadow: "0 4px 30px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}>Queen</span>
         </h1>
-        <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-10 animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
+        <p
+          className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-10 animate-fade-in-up"
+          style={{
+            animationDelay: "0.4s",
+            textShadow: "0 2px 16px rgba(0,0,0,0.75), 0 1px 4px rgba(0,0,0,0.5)",
+          }}
+        >
           So light and fair, she dances for children everywhere.
           <br />
-          <span className="text-white/60 text-base">
+          <span className="text-white/70 text-base">
             A whimsical tale of a tiny winged guardian who watches over every child&apos;s dreams.
           </span>
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
           <Button
             size="lg"
-            className="bg-golden hover:bg-golden/90 text-plum-deep font-semibold px-8 py-6 text-base rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            className="bg-golden hover:bg-golden/90 text-plum-deep font-semibold px-8 py-6 text-base rounded-full shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/30 transition-all duration-300 hover:scale-105"
             onClick={() =>
               document.querySelector("#book")?.scrollIntoView({ behavior: "smooth" })
             }
@@ -293,7 +370,7 @@ function HeroSection() {
           <Button
             variant="outline"
             size="lg"
-            className="border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold px-8 py-6 text-base rounded-full backdrop-blur-sm transition-all duration-300"
+            className="border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold px-8 py-6 text-base rounded-full backdrop-blur-sm shadow-lg shadow-black/20 transition-all duration-300"
             onClick={() =>
               document.querySelector("#trailer")?.scrollIntoView({ behavior: "smooth" })
             }
@@ -310,14 +387,12 @@ function HeroSection() {
         className="absolute bottom-8 right-8 z-20 w-11 h-11 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/25 hover:scale-110 transition-all duration-300"
       >
         {isMuted ? (
-          /* Speaker-off icon */
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
             <line x1="23" y1="9" x2="17" y2="15" />
             <line x1="17" y1="9" x2="23" y2="15" />
           </svg>
         ) : (
-          /* Speaker-on icon */
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
             <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />

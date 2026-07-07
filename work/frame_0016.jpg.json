@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "YES: [left side] [CAN YOU SPOT H] [DARK]",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783465025,
+  "id": "202607080657028f89407a89874826",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202607080657028f89407a89874826",
+  "usage": {
+    "completion_tokens": 20,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2746,
+    "prompt_tokens_details": {
+      "cached_tokens": 48
+    },
+    "total_tokens": 2766
+  }
+}

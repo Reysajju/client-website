@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "YES: [left] [SHE DAn] [DARK]",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783464967,
+  "id": "202607080656046109b838b0214763",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202607080656046109b838b0214763",
+  "usage": {
+    "completion_tokens": 18,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2746,
+    "prompt_tokens_details": {
+      "cached_tokens": 6
+    },
+    "total_tokens": 2764
+  }
+}

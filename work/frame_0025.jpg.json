@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "YES: [left] [GOO] [BRIGHT]",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783465051,
+  "id": "20260708065729a201a7e586ee4c16",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260708065729a201a7e586ee4c16",
+  "usage": {
+    "completion_tokens": 16,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2746,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 2762
+  }
+}

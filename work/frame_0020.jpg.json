@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "YES: [left side] [EVERY BACKYARD HIDES A LITTLE MAGIC] [DARK]",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783465040,
+  "id": "20260708065717ef43037a2e6d49be",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260708065717ef43037a2e6d49be",
+  "usage": {
+    "completion_tokens": 26,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2746,
+    "prompt_tokens_details": {
+      "cached_tokens": 6
+    },
+    "total_tokens": 2772
+  }
+}

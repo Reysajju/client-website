@@ -1,0 +1,65 @@
+frame_0001.jpg: NO
+frame_0002.jpg: YES: [center] [THE DANCING QUEEN BY DIANE BROCKE] [MEDIUM]
+frame_0003.jpg: YES: [center] "THE DANCING QUEEN BY DIANE BROOKS" [BRIGHT]
+frame_0004.jpg: YES: [center] [THE DANCING QUEEN BY DIANE BROOKS] [BRIGHT]
+frame_0005.jpg: YES: [center] "THE DANCING QUEEN BY DIANE BROOKS" [BRIGHT]
+frame_0006.jpg: YES: [left] [SHE DAn] [DARK]
+frame_0007.jpg: YES: [left] [SHE DANCES FOR CHILDREN] [DARK]
+frame_0008.jpg: YES: [left side] [SHE DANCES FOR CHILDREN EVERYWHERE] [DARK]
+frame_0009.jpg: YES: [left side] [SHE DANCES FOR CHILDREN EVERYWHERE] [DARK]
+frame_0010.jpg: YES: [left] [SHE DANCES FOR CHILDREN EVERYWHERE] [DARK]
+frame_0011.jpg: YES: [625,252,893,482] [BEAUTIFUL B] [DARK]
+frame_0012.jpg: YES: [right] [BEAUTIFUL BEAUTIFUL DANCING Q] [DARK]
+frame_0013.jpg: YES: [right] [BEAUTIFUL BEAUTIFUL DANCING QUEEN] [DARK]
+frame_0014.jpg: YES: [626,239,893,775] [BEAUTIFUL BEAUTIFUL DANCING QUEEN] [DARK]
+frame_0015.jpg: YES: [left] [C] [BRIGHT]
+frame_0016.jpg: YES: [left side] [CAN YOU SPOT H] [DARK]
+frame_0017.jpg: YES: [left] [CAN YOU SPOT HER] [DARK]
+frame_0018.jpg: YES: [left] [CAN YOU SPOT HER] [BRIGHT]
+frame_0019.jpg: YES: [left] [EVERY BACKYA] [DARK]
+frame_0020.jpg: YES: [left side] [EVERY BACKYARD HIDES A LITTLE MAGIC] [DARK]
+frame_0021.jpg: YES: [left] [EVERY BACKYARD HIDES A LITTLE MAGIC] [DARK]
+frame_0022.jpg: YES: [right] [0] [BRIGHT]
+frame_0023.jpg: YES: [right] [ONLY ONCE.] [DARK]
+frame_0024.jpg: YES: [right] [ONLY ONCE...] [DARK]
+frame_0025.jpg: YES: [left] [GOO] [BRIGHT]
+frame_0026.jpg: YES: [left] [GOODNIGHT. LITTLE DREAM] [DARK]
+frame_0027.jpg: YES: [left] "GOODNIGHT. LITTLE DREAMERS" [center brightness: DARK]
+frame_0028.jpg: YES: [left] [GOODNIGHT. LITTLE DREAMERS] [DARK]
+frame_0029.jpg: ERROR
+frame_0030.jpg: ERROR
+frame_0031.jpg: ERROR
+frame_0032.jpg: ERROR
+frame_0033.jpg: ERROR
+frame_0034.jpg: ERROR
+frame_0035.jpg: ERROR
+frame_0036.jpg: ERROR
+frame_0037.jpg: ERROR
+frame_0038.jpg: ERROR
+frame_0039.jpg: ERROR
+frame_0040.jpg: ERROR
+frame_0041.jpg: ERROR
+frame_0042.jpg: ERROR
+frame_0043.jpg: ERROR
+frame_0044.jpg: ERROR
+frame_0045.jpg: ERROR
+frame_0046.jpg: ERROR
+frame_0047.jpg: ERROR
+frame_0048.jpg: ERROR
+frame_0049.jpg: ERROR
+frame_0050.jpg: ERROR
+frame_0051.jpg: ERROR
+frame_0052.jpg: ERROR
+frame_0053.jpg: ERROR
+frame_0054.jpg: ERROR
+frame_0055.jpg: ERROR
+frame_0056.jpg: ERROR
+frame_0057.jpg: ERROR
+frame_0058.jpg: ERROR
+frame_0059.jpg: ERROR
+frame_0060.jpg: ERROR
+frame_0061.jpg: ERROR
+frame_0062.jpg: ERROR
+frame_0063.jpg: ERROR
+frame_0064.jpg: ERROR
+frame_0065.jpg: ERROR

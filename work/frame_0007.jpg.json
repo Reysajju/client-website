@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "YES: [left] [SHE DANCES FOR CHILDREN] [DARK]",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783464971,
+  "id": "20260708065607ff089ccac479439c",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260708065607ff089ccac479439c",
+  "usage": {
+    "completion_tokens": 21,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2746,
+    "prompt_tokens_details": {
+      "cached_tokens": 48
+    },
+    "total_tokens": 2767
+  }
+}
