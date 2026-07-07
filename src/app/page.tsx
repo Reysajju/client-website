@@ -189,19 +189,66 @@ function Nav() {
 
 /* ─── Hero Section ─── */
 function HeroSection() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    // Start unmuted, then attempt to unmute after first user gesture
+    video.muted = false;
+    video.play().catch(() => {
+      // Browser blocked autoplay without mute — fall back to muted
+      video.muted = true;
+      setIsMuted(true);
+      // Retry unmute on first interaction
+      const unmuteOnInteraction = () => {
+        video.muted = false;
+        setIsMuted(false);
+        document.removeEventListener("click", unmuteOnInteraction);
+        document.removeEventListener("touchstart", unmuteOnInteraction);
+      };
+      document.addEventListener("click", unmuteOnInteraction, { once: true });
+      document.addEventListener("touchstart", unmuteOnInteraction, { once: true });
+    });
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setIsMuted(video.muted);
+  }, []);
+
   return (
     <section
       id="home"
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
-      style={{
-        background:
-          "linear-gradient(160deg, #4A2848 0%, #6B3A6B 30%, #9B7A8A 60%, #D4A853 100%)",
-      }}
     >
+      {/* ─── Full-bleed background video ─── */}
+      <video
+        ref={videoRef}
+        src="/trailer.mp4"
+        autoPlay
+        loop
+        muted={false}
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+
+      {/* Gradient overlay so text stays readable */}
+      <div
+        className="absolute inset-0 z-[1]"
+        style={{
+          background:
+            "linear-gradient(160deg, rgba(74,40,72,0.72) 0%, rgba(107,58,107,0.55) 30%, rgba(155,122,138,0.40) 60%, rgba(212,168,83,0.50) 100%)",
+        }}
+      />
+
       <StarField />
 
       {/* Decorative floating circles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div className="absolute inset-0 z-[2] overflow-hidden pointer-events-none" aria-hidden="true">
         <div
           className="absolute w-64 h-64 rounded-full opacity-10 animate-drift"
           style={{ background: "radial-gradient(circle, #F0D68A 0%, transparent 70%)", top: "10%", left: "-5%" }}
@@ -216,6 +263,7 @@ function HeroSection() {
         />
       </div>
 
+      {/* ─── Content ─── */}
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
         <p className="text-golden-light/80 text-sm md:text-base tracking-[0.3em] uppercase mb-4 animate-fade-in-up">
           A Bedtime Story by Mémère
@@ -255,8 +303,31 @@ function HeroSection() {
         </div>
       </div>
 
+      {/* ─── Mute / Unmute button ─── */}
+      <button
+        onClick={toggleMute}
+        aria-label={isMuted ? "Unmute video" : "Mute video"}
+        className="absolute bottom-8 right-8 z-20 w-11 h-11 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/25 hover:scale-110 transition-all duration-300"
+      >
+        {isMuted ? (
+          /* Speaker-off icon */
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+        ) : (
+          /* Speaker-on icon */
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
+        )}
+      </button>
+
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float">
+      <div className="absolute bottom-8 left-8 z-10 animate-float">
         <svg
           className="w-6 h-6 text-white/50"
           fill="none"
