@@ -88,6 +88,68 @@ const ThemeCtx = createContext<ThemeCtxValue>({
 
 function useApp() { return useContext(ThemeCtx); }
 
+/* ═══════════════════════════════════════════════════
+   SEO — Dynamic document title + meta description
+   ═══════════════════════════════════════════════════ */
+
+const PAGE_SEO: Record<PageId, { title: string; description: string; heading: string }> = {
+  home: {
+    title: "The Dancing Queen — A Bedtime Story by Mémère",
+    description: "A whimsical bedtime picture book about a tiny winged fairy who dances in children's hair and guards their dreams. For ages 2–6.",
+    heading: "The Dancing Queen",
+  },
+  book: {
+    title: "About the Book | The Dancing Queen by Mémère",
+    description: "Discover The Dancing Queen — a whimsical bedtime picture book featuring a day-to-night color journey, rhyming verse, and guardian fairy mythology. Ages 2–6, 32 pages.",
+    heading: "About the Book",
+  },
+  author: {
+    title: "About Mémère — Author of The Dancing Queen",
+    description: "Meet Mémère — the grandmother behind The Dancing Queen. Written as a bedtime gift for her grandsons George and Myles, this whimsical tale celebrates the magic of childhood.",
+    heading: "About Mémère",
+  },
+  trailer: {
+    title: "Book Trailer | The Dancing Queen by Mémère",
+    description: "Watch The Dancing Queen come to life — from sunlit backyard dances to the quiet magic of a child's pillow at night. A 30-second book trailer for ages 2–6.",
+    heading: "Book Trailer",
+  },
+  contact: {
+    title: "Contact Mémère | The Dancing Queen",
+    description: "Get in touch with Mémère — for inquiries, press copies, or to share what The Dancing Queen means to your family.",
+    heading: "Contact Mémère",
+  },
+  purchase: {
+    title: "Get the Book | The Dancing Queen by Mémère",
+    description: "Order your copy of The Dancing Queen — a whimsical bedtime picture book by Mémère. Available now for children ages 2–6.",
+    heading: "Get the Book",
+  },
+  experience: {
+    title: "Experience the Book | The Dancing Queen by Mémère",
+    description: "Scroll through The Dancing Queen frame by frame — a scroll-driven story experience unfolding the bedtime tale of a tiny winged guardian fairy.",
+    heading: "Experience the Book",
+  },
+};
+
+function usePageSEO(page: PageId) {
+  useEffect(() => {
+    const seo = PAGE_SEO[page];
+    if (!seo) return;
+    document.title = seo.title;
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (!metaDesc) {
+      metaDesc = document.createElement("meta");
+      metaDesc.setAttribute("name", "description");
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.setAttribute("content", seo.description);
+    // Update canonical
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) {
+      canonical.setAttribute("href", `https://thedancingqueenbook.com/${page === "home" ? "" : "#" + page}`);
+    }
+  }, [page]);
+}
+
 function applyThemeToDOM(t: ColorTheme) {
   const r = document.documentElement.style;
   r.setProperty("--background", t.bg);
@@ -216,31 +278,31 @@ function Nav() {
   const go = useCallback((p: PageId) => { navigate(p); setMobileOpen(false); }, [navigate]);
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${page === "home" && !scrolled ? "bg-transparent shadow-none" : "bg-white/85 backdrop-blur-md shadow-sm"}`} style={{ borderColor: theme.border }}>
-      <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
-        <button onClick={() => go("home")} className="text-lg font-semibold tracking-wide" style={{ color: page === "home" && !scrolled ? "#FFFFFF" : theme.primary }}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${page === "home" && !scrolled ? "bg-transparent shadow-none" : "bg-white/85 backdrop-blur-md shadow-sm"}`} style={{ borderColor: theme.border }} role="navigation" aria-label="Main navigation">
+      <div className="max-w-6xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
+        <button onClick={() => go("home")} className="text-base sm:text-lg font-semibold tracking-wide" style={{ color: page === "home" && !scrolled ? "#FFFFFF" : theme.primary }} aria-label="Go to homepage">
           The Dancing Queen
         </button>
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-6 lg:gap-8" role="menubar">
           {links.map(l => (
-            <button key={l.href} onClick={() => go(l.href)}
-              className={`text-sm font-medium transition-colors duration-300 ${page===l.href ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
+            <button key={l.href} onClick={() => go(l.href)} role="menuitem"
+              className={`text-sm font-medium transition-colors duration-300 px-2 py-1 rounded-lg ${page===l.href ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
               style={{ color: page === "home" && !scrolled ? "#FFFFFF" : theme.primary }}>
               {l.label}
             </button>
           ))}
         </div>
-        <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
+        <button className="md:hidden flex flex-col gap-1.5 p-2 -mr-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label={mobileOpen ? "Close menu" : "Open menu"} aria-expanded={mobileOpen}>
           <span className={`block w-6 h-0.5 transition-all duration-300 ${mobileOpen?"rotate-45 translate-y-2":""}`} style={{background: page === "home" && !scrolled ? "#FFFFFF" : theme.primary}} />
           <span className={`block w-6 h-0.5 transition-all duration-300 ${mobileOpen?"opacity-0":""}`} style={{background: page === "home" && !scrolled ? "#FFFFFF" : theme.primary}} />
           <span className={`block w-6 h-0.5 transition-all duration-300 ${mobileOpen?"-rotate-45 -translate-y-2":""}`} style={{background: page === "home" && !scrolled ? "#FFFFFF" : theme.primary}} />
         </button>
       </div>
       {mobileOpen && (
-        <div className="md:hidden shadow-lg" style={{ background: theme.card, borderTop: `1px solid ${theme.border}` }}>
-          <div className="flex flex-col px-6 py-4 gap-3">
+        <div className="md:hidden shadow-lg" style={{ background: theme.card, borderTop: `1px solid ${theme.border}` }} role="menu">
+          <div className="flex flex-col px-6 py-4 gap-1">
             {links.map(l => (
-              <button key={l.href} onClick={() => go(l.href)} className="text-left py-2 font-medium transition-colors" style={{ color: theme.primary }}>
+              <button key={l.href} onClick={() => go(l.href)} role="menuitem" className="text-left py-3 px-3 font-medium transition-colors rounded-lg hover:opacity-80" style={{ color: theme.primary }}>
                 {l.label}
               </button>
             ))}
@@ -301,36 +363,36 @@ function HeroSection() {
   const translateY = (1 - Math.min(1, scrollProg * 2.5)) * 50;
 
   return (
-    <div ref={sectionRef} className="relative" style={{ minHeight: "180vh" }}>
+    <div ref={sectionRef} className="relative" style={{ minHeight: "180vh" }} aria-label="Hero section with book trailer video">
       {/* Sticky video viewport */}
       <div className="sticky top-0 h-screen overflow-hidden">
-        <video ref={videoRef} src="/trailer.mp4" autoPlay loop muted={false} playsInline className="absolute inset-0 w-full h-full object-cover no-theme-transition" />
+        <video ref={videoRef} src="/trailer.mp4" autoPlay loop muted={false} playsInline className="absolute inset-0 w-full h-full object-cover no-theme-transition" aria-hidden="true" />
         {/* Strong center overlay to block all video text */}
-        <div className="absolute inset-0 z-[1] pointer-events-none" style={{ background: `radial-gradient(ellipse 75% 65% at 50% 45%, ${theme.heroOverlay.replace(/[\d.]+\)$/, "0.92)")}, ${theme.heroOverlay.replace(/[\d.]+\)$/, "0.60)")} 50%, transparent 88%)` }} />
+        <div className="absolute inset-0 z-[1] pointer-events-none" style={{ background: `radial-gradient(ellipse 75% 65% at 50% 45%, ${theme.heroOverlay.replace(/[\d.]+\)$/, "0.92)")}, ${theme.heroOverlay.replace(/[\d.]+\)$/, "0.60)")} 50%, transparent 88%)` }} aria-hidden="true" />
 
         <StarField />
 
         {/* Scroll-revealed text */}
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-          <div className="text-center px-6 max-w-4xl mx-auto pointer-events-auto" style={{ opacity, transform: `translateY(${translateY}px)`, transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}>
-            <p className="text-sm md:text-base tracking-[0.3em] uppercase mb-5" style={{ color: theme.accent, textShadow: "0 2px 16px rgba(0,0,0,0.7)" }}>
+          <div className="text-center px-4 sm:px-6 max-w-4xl mx-auto pointer-events-auto" style={{ opacity, transform: `translateY(${translateY}px)`, transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}>
+            <p className="text-xs sm:text-sm md:text-base tracking-[0.15em] sm:tracking-[0.3em] uppercase mb-4 sm:mb-5" style={{ color: theme.accent, textShadow: "0 2px 16px rgba(0,0,0,0.7)" }}>
               A Bedtime Story by M\u00e9m\u00e8re
             </p>
-            <h1 className="text-5xl sm:text-6xl md:text-8xl font-bold text-white leading-tight mb-6" style={{ textShadow: "0 4px 30px rgba(0,0,0,0.85), 0 2px 10px rgba(0,0,0,0.6)" }}>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold text-white leading-tight mb-4 sm:mb-6" style={{ textShadow: "0 4px 30px rgba(0,0,0,0.85), 0 2px 10px rgba(0,0,0,0.6)" }}>
               The Dancing<br /><span style={{ color: theme.accent, textShadow: "0 4px 30px rgba(0,0,0,0.7)" }}>Queen</span>
             </h1>
-            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-10" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.75)" }}>
+            <p className="text-base sm:text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-8 sm:mb-10" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.75)" }}>
               So light and fair, she dances for children everywhere.
-              <br /><span className="text-white/70 text-base">A whimsical tale of a tiny winged guardian who watches over every child&apos;s dreams.</span>
+              <br className="hidden sm:block" /><span className="text-white/70 text-sm sm:text-base"> A whimsical tale of a tiny winged guardian who watches over every child&apos;s dreams.</span>
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("book")}>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
+              <Button size="lg" className="w-full sm:w-auto font-semibold px-6 sm:px-8 py-5 sm:py-6 text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("book")}>
                 Discover the Story
               </Button>
-              <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full border-2 shadow-lg backdrop-blur-sm hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("trailer")}>
+              <Button size="lg" className="w-full sm:w-auto font-semibold px-6 sm:px-8 py-5 sm:py-6 text-sm sm:text-base rounded-full border-2 shadow-lg backdrop-blur-sm hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("trailer")}>
                 Watch the Trailer
               </Button>
-              <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full border-2 shadow-lg backdrop-blur-sm hover:scale-105 transition-all duration-300" style={{ borderColor: theme.accent+"80", color: theme.accent, background: "rgba(0,0,0,0.15)" }} onClick={() => navigate("experience")}>
+              <Button size="lg" className="w-full sm:w-auto font-semibold px-6 sm:px-8 py-5 sm:py-6 text-sm sm:text-base rounded-full border-2 shadow-lg backdrop-blur-sm hover:scale-105 transition-all duration-300" style={{ borderColor: theme.accent+"80", color: theme.accent, background: "rgba(0,0,0,0.15)" }} onClick={() => navigate("experience")}>
                 Experience the Book
               </Button>
             </div>
@@ -338,7 +400,7 @@ function HeroSection() {
         </div>
 
         {/* Mute button */}
-        <button onClick={toggleMute} aria-label={isMuted?"Unmute video":"Mute video"} className="absolute bottom-8 right-8 z-20 w-11 h-11 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/25 hover:scale-110 transition-all duration-300 no-theme-transition">
+        <button onClick={toggleMute} aria-label={isMuted?"Unmute video":"Mute video"} className="absolute bottom-6 right-4 sm:bottom-8 sm:right-8 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/25 hover:scale-110 transition-all duration-300 no-theme-transition">
           {isMuted ? (
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
           ) : (
@@ -359,21 +421,21 @@ function HeroSection() {
 function HomeBookSection() {
   const { theme, navigate } = useApp();
   return (
-    <section className="py-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+    <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 relative overflow-hidden" style={{ background: theme.bg }} aria-labelledby="home-book-heading">
       <Butterflies count={3} /><QueenSparkles />
       <div className="max-w-6xl mx-auto relative z-10">
-        <Reveal><div className="text-center mb-16">
-          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Story</p>
-          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About the Book</h2>
-          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
-          <p className="text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
+        <Reveal><div className="text-center mb-12 sm:mb-16">
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Story</p>
+          <h2 id="home-book-heading" className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About the Book</h2>
+          <div className="w-16 sm:w-20 h-1 rounded-full mx-auto mb-6 sm:mb-8" style={{ background: theme.accent }} />
+          <p className="text-base sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
             The Dancing Queen invents a new piece of children&apos;s mythology &mdash; a tiny, light, fairy-like being with wings who lives in a child&apos;s hair. By day she plays in backyards; as evening falls, she tucks her wings in close and stands guard over their dreams.
           </p>
         </div></Reveal>
 
-        <Reveal delay={150}><div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+        <Reveal delay={150}><div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-16">
           {VERSES.map(v => (
-            <div key={v.label} className="rounded-2xl p-6 md:p-8 shadow-sm" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+            <div key={v.label} className="rounded-2xl p-5 sm:p-6 md:p-8 shadow-sm" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
               <p className="text-lg md:text-xl font-medium italic leading-relaxed" style={{ color: theme.primary }}>&ldquo;{v.text}&rdquo;</p>
               <p className="text-sm mt-3" style={{ color: theme.mutedFg }}>{v.label}</p>
             </div>
@@ -387,10 +449,10 @@ function HomeBookSection() {
           <p className="max-w-xl mx-auto" style={{ color: theme.mutedFg }}>Every detail is crafted to create a bedtime experience children will ask for night after night.</p>
         </div></Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {FEATURES.map((f, i) => (
             <Reveal key={f.title} delay={i*80}>
-              <div className="rounded-2xl p-6 md:p-8 h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+              <div className="rounded-2xl p-5 sm:p-6 md:p-8 h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
                 <span className="text-3xl mb-4 block">{f.icon}</span>
                 <h4 className="text-lg font-semibold mb-3" style={{ color: theme.primary }}>{f.title}</h4>
                 <p className="text-sm leading-relaxed" style={{ color: theme.mutedFg }}>{f.desc}</p>
@@ -399,9 +461,9 @@ function HomeBookSection() {
           ))}
         </div>
 
-        <Reveal delay={300}><div className="mt-16 rounded-2xl p-8 md:p-10" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
-          <h3 className="text-xl font-semibold mb-6 text-center" style={{ color: theme.primary }}>Book Details</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        <Reveal delay={300}><div className="mt-16 rounded-2xl p-6 sm:p-8 md:p-10" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+          <h3 className="text-lg sm:text-xl font-semibold mb-6 text-center" style={{ color: theme.primary }}>Book Details</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-center">
             {[{l:"Format",v:"Picture Book"},{l:"Pages",v:"32 pages"},{l:"Trim",v:'8.75" x 8.75"'},{l:"Ages",v:"2 \u2013 6"}].map(item => (
               <div key={item.l}>
                 <p className="text-xs uppercase tracking-wider font-medium mb-1" style={{ color: theme.accent }}>{item.l}</p>
@@ -412,7 +474,7 @@ function HomeBookSection() {
         </div></Reveal>
 
         <Reveal delay={200}><div className="mt-12 text-center">
-          <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }} onClick={() => navigate("book")}>
+          <Button size="lg" className="font-semibold px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }} onClick={() => navigate("book")}>
             Explore the Full Book Page
           </Button>
         </div></Reveal>
@@ -425,19 +487,19 @@ function HomeBookSection() {
 function HomeAuthorSection() {
   const { theme, themeKey, setTheme, navigate } = useApp();
   return (
-    <section className="py-20 px-6 relative overflow-hidden" style={{ background: theme.bgAlt }}>
+    <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 relative overflow-hidden" style={{ background: theme.bgAlt }} aria-labelledby="home-author-heading">
       <Butterflies count={3} /><QueenSparkles />
       <div className="max-w-6xl mx-auto relative z-10">
-        <Reveal><div className="text-center mb-16">
-          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Author</p>
-          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About M\u00e9m\u00e8re</h2>
+        <Reveal><div className="text-center mb-12 sm:mb-16">
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Author</p>
+          <h2 id="home-author-heading" className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About M\u00e9m\u00e8re</h2>
           <div className="w-20 h-1 rounded-full mx-auto" style={{ background: theme.accent }} />
         </div></Reveal>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-16 sm:mb-20">
           <Reveal>
             <div className="relative flex justify-center">
-              <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full overflow-hidden shadow-2xl" style={{ border: `4px solid ${theme.card}` }}>
+              <div className="relative w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-full overflow-hidden shadow-2xl" style={{ border: `4px solid ${theme.card}` }}>
                 <Image src="/author-image.png" alt="M\u00e9m\u00e8re \u2014 author of The Dancing Queen" fill className="object-cover" priority />
               </div>
               <div className="absolute inset-0 rounded-full animate-pulse-soft" style={{ border: `2px solid ${theme.accent}40`, transform:"scale(1.1)" }} aria-hidden="true" />
@@ -445,7 +507,7 @@ function HomeAuthorSection() {
           </Reveal>
           <Reveal delay={200}>
             <div>
-              <blockquote className="text-2xl md:text-3xl font-medium italic leading-relaxed mb-8" style={{ color: theme.primary }}>
+              <blockquote className="text-xl sm:text-2xl md:text-3xl font-medium italic leading-relaxed mb-8" style={{ color: theme.primary }}>
                 &ldquo;For George and Myles, my grandsons, who fill my heart with feelings I&apos;ve never had to explore before.&rdquo;
               </blockquote>
               <hr className="mb-8" style={{ borderColor: theme.accent+"40" }} />
@@ -469,12 +531,12 @@ function HomeAuthorSection() {
             <p className="text-center max-w-2xl mx-auto mb-8" style={{ color: theme.mutedFg }}>
               Click any color to transform the entire website into that moment of the story.
             </p>
-            <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4">
               {PALETTE.map(c => (
                 <button key={c.key} onClick={() => setTheme(c.key)}
                   className="flex flex-col items-center gap-2 group cursor-pointer p-2 rounded-xl transition-all duration-300 hover:scale-110"
                   style={{ background: themeKey === c.key ? theme.primary+"20" : "transparent", outline: themeKey === c.key ? `2px solid ${theme.primary}` : "none" }}>
-                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-full shadow-md transition-transform duration-300 group-hover:scale-110" style={{ background: c.color, border: `2px solid ${theme.border}` }} />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full shadow-md transition-transform duration-300 group-hover:scale-110" style={{ background: c.color, border: `2px solid ${theme.border}` }} />
                   <span className="text-xs font-medium" style={{ color: theme.mutedFg }}>{c.label}</span>
                   <span className="text-[10px] uppercase tracking-wider" style={{ color: theme.accent }}>{c.phase}</span>
                 </button>
@@ -484,7 +546,7 @@ function HomeAuthorSection() {
         </Reveal>
 
         <Reveal delay={200}><div className="mt-12 text-center">
-          <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }} onClick={() => navigate("author")}>
+          <Button size="lg" className="font-semibold px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }} onClick={() => navigate("author")}>
             Read More About M\u00e9m\u00e8re
           </Button>
         </div></Reveal>
@@ -497,12 +559,12 @@ function HomeAuthorSection() {
 function HomeTrailerSection() {
   const { theme, navigate } = useApp();
   return (
-    <section className="py-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+    <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 relative overflow-hidden" style={{ background: theme.bg }} aria-labelledby="home-trailer-heading">
       <Butterflies count={3} /><QueenSparkles />
       <div className="max-w-4xl mx-auto relative z-10">
-        <Reveal><div className="text-center mb-12">
-          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Sneak Peek</p>
-          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Book Trailer</h2>
+        <Reveal><div className="text-center mb-10 sm:mb-12">
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Sneak Peek</p>
+          <h2 id="home-trailer-heading" className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Book Trailer</h2>
           <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
           <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
             Watch the Dancing Queen come to life &mdash; from sunlit backyard dances to the quiet magic of a child&apos;s pillow at night.
@@ -522,7 +584,7 @@ function HomeTrailerSection() {
         </p></Reveal>
 
         <Reveal delay={200}><div className="mt-12 text-center">
-          <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }} onClick={() => navigate("trailer")}>
+          <Button size="lg" className="font-semibold px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }} onClick={() => navigate("trailer")}>
             Go to Trailer Page
           </Button>
         </div></Reveal>
@@ -535,22 +597,22 @@ function HomeTrailerSection() {
 function HomeCTASection() {
   const { theme, navigate } = useApp();
   return (
-    <section className="py-24 px-6 relative overflow-hidden" style={{ background: theme.primary }}>
+    <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 relative overflow-hidden" style={{ background: theme.primary }} aria-labelledby="home-cta-heading">
       <Butterflies count={5} /><StarField />
       <div className="max-w-3xl mx-auto text-center relative z-10">
         <Reveal>
-          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-4" style={{ color: theme.accent }}>Available Now</p>
-          <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase mb-4" style={{ color: theme.accent }}>Available Now</p>
+          <h2 id="home-cta-heading" className="text-3xl sm:text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
             Every Child Deserves<br /><span style={{ color: theme.accent }}>a Little Magic</span>
           </h2>
-          <p className="text-lg text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
+          <p className="text-base sm:text-lg text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
             The Dancing Queen is more than a bedtime story &mdash; it is a grandmother&apos;s love letter to the wonder of childhood, and to the tiny guardians who watch over our children&apos;s dreams.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("purchase")}>
+            <Button size="lg" className="w-full sm:w-auto font-semibold px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("purchase")}>
               Get the Book
             </Button>
-            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full border-2 hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("contact")}>
+            <Button size="lg" className="w-full sm:w-auto font-semibold px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base rounded-full border-2 hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("contact")}>
               Contact M\u00e9m\u00e8re
             </Button>
           </div>
@@ -581,21 +643,21 @@ function HomePage() {
 function BookPage() {
   const { theme, navigate } = useApp();
   return (
-    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+    <div id="main-content" className="min-h-screen pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 relative overflow-hidden" style={{ background: theme.bg }} role="main" aria-labelledby="book-page-heading">
       <Butterflies count={4} /><QueenSparkles />
       <div className="max-w-6xl mx-auto relative z-10">
-        <Reveal><div className="text-center mb-16">
-          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Story</p>
-          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About the Book</h2>
-          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
-          <p className="text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
+        <Reveal><div className="text-center mb-12 sm:mb-16">
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Story</p>
+          <h1 id="book-page-heading" className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About the Book</h1>
+          <div className="w-16 sm:w-20 h-1 rounded-full mx-auto mb-6 sm:mb-8" style={{ background: theme.accent }} />
+          <p className="text-base sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
             The Dancing Queen invents a new piece of children&apos;s mythology &mdash; a tiny, light, fairy-like being with wings who lives in a child&apos;s hair. By day she plays in backyards; as evening falls, she tucks her wings in close and stands guard over their dreams.
           </p>
         </div></Reveal>
 
-        <Reveal delay={150}><div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+        <Reveal delay={150}><div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-16">
           {VERSES.map(v => (
-            <div key={v.label} className="rounded-2xl p-6 md:p-8 shadow-sm" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+            <div key={v.label} className="rounded-2xl p-5 sm:p-6 md:p-8 shadow-sm" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
               <p className="text-lg md:text-xl font-medium italic leading-relaxed" style={{ color: theme.primary }}>&ldquo;{v.text}&rdquo;</p>
               <p className="text-sm mt-3" style={{ color: theme.mutedFg }}>{v.label}</p>
             </div>
@@ -609,10 +671,10 @@ function BookPage() {
           <p className="max-w-xl mx-auto" style={{ color: theme.mutedFg }}>Every detail is crafted to create a bedtime experience children will ask for night after night.</p>
         </div></Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {FEATURES.map((f, i) => (
             <Reveal key={f.title} delay={i*80}>
-              <div className="rounded-2xl p-6 md:p-8 h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+              <div className="rounded-2xl p-5 sm:p-6 md:p-8 h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
                 <span className="text-3xl mb-4 block">{f.icon}</span>
                 <h4 className="text-lg font-semibold mb-3" style={{ color: theme.primary }}>{f.title}</h4>
                 <p className="text-sm leading-relaxed" style={{ color: theme.mutedFg }}>{f.desc}</p>
@@ -621,9 +683,9 @@ function BookPage() {
           ))}
         </div>
 
-        <Reveal delay={300}><div className="mt-16 rounded-2xl p-8 md:p-10" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
-          <h3 className="text-xl font-semibold mb-6 text-center" style={{ color: theme.primary }}>Book Details</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        <Reveal delay={300}><div className="mt-16 rounded-2xl p-6 sm:p-8 md:p-10" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+          <h3 className="text-lg sm:text-xl font-semibold mb-6 text-center" style={{ color: theme.primary }}>Book Details</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-center">
             {[{l:"Format",v:"Picture Book"},{l:"Pages",v:"32 pages"},{l:"Trim",v:'8.75" x 8.75"'},{l:"Ages",v:"2 \u2013 6"}].map(item => (
               <div key={item.l}>
                 <p className="text-xs uppercase tracking-wider font-medium mb-1" style={{ color: theme.accent }}>{item.l}</p>
@@ -645,19 +707,19 @@ function AuthorPage() {
   const { theme, themeKey, setTheme } = useApp();
 
   return (
-    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+    <div id="main-content" className="min-h-screen pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 relative overflow-hidden" style={{ background: theme.bg }} role="main" aria-labelledby="author-page-heading">
       <Butterflies count={3} /><QueenSparkles />
       <div className="max-w-6xl mx-auto relative z-10">
-        <Reveal><div className="text-center mb-16">
-          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Author</p>
-          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About M\u00e9m\u00e8re</h2>
-          <div className="w-20 h-1 rounded-full mx-auto" style={{ background: theme.accent }} />
+        <Reveal><div className="text-center mb-12 sm:mb-16">
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Author</p>
+          <h1 id="author-page-heading" className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About M\u00e9m\u00e8re</h1>
+          <div className="w-16 sm:w-20 h-1 rounded-full mx-auto" style={{ background: theme.accent }} />
         </div></Reveal>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-16 sm:mb-20">
           <Reveal>
             <div className="relative flex justify-center">
-              <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full overflow-hidden shadow-2xl" style={{ border: `4px solid ${theme.card}` }}>
+              <div className="relative w-48 h-48 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-full overflow-hidden shadow-2xl" style={{ border: `4px solid ${theme.card}` }}>
                 <Image src="/author-image.png" alt="M\u00e9m\u00e8re \u2014 author of The Dancing Queen" fill className="object-cover" priority />
               </div>
               <div className="absolute inset-0 rounded-full animate-pulse-soft" style={{ border: `2px solid ${theme.accent}40`, transform:"scale(1.1)" }} aria-hidden="true" />
@@ -665,7 +727,7 @@ function AuthorPage() {
           </Reveal>
           <Reveal delay={200}>
             <div>
-              <blockquote className="text-2xl md:text-3xl font-medium italic leading-relaxed mb-8" style={{ color: theme.primary }}>
+              <blockquote className="text-xl sm:text-2xl md:text-3xl font-medium italic leading-relaxed mb-8" style={{ color: theme.primary }}>
                 &ldquo;For George and Myles, my grandsons, who fill my heart with feelings I&apos;ve never had to explore before.&rdquo;
               </blockquote>
               <hr className="mb-8" style={{ borderColor: theme.accent+"40" }} />
@@ -689,12 +751,12 @@ function AuthorPage() {
             <p className="text-center max-w-2xl mx-auto mb-8" style={{ color: theme.mutedFg }}>
               Click any color to transform the entire website into that moment of the story.
             </p>
-            <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4">
               {PALETTE.map(c => (
                 <button key={c.key} onClick={() => setTheme(c.key)}
                   className="flex flex-col items-center gap-2 group cursor-pointer p-2 rounded-xl transition-all duration-300 hover:scale-110"
                   style={{ background: themeKey === c.key ? theme.primary+"20" : "transparent", outline: themeKey === c.key ? `2px solid ${theme.primary}` : "none" }}>
-                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-full shadow-md transition-transform duration-300 group-hover:scale-110" style={{ background: c.color, border: `2px solid ${theme.border}` }} />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full shadow-md transition-transform duration-300 group-hover:scale-110" style={{ background: c.color, border: `2px solid ${theme.border}` }} />
                   <span className="text-xs font-medium" style={{ color: theme.mutedFg }}>{c.label}</span>
                   <span className="text-[10px] uppercase tracking-wider" style={{ color: theme.accent }}>{c.phase}</span>
                 </button>
@@ -714,14 +776,14 @@ function AuthorPage() {
 function TrailerPage() {
   const { theme } = useApp();
   return (
-    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+    <div id="main-content" className="min-h-screen pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 relative overflow-hidden" style={{ background: theme.bg }} role="main" aria-labelledby="trailer-page-heading">
       <Butterflies count={3} /><QueenSparkles />
       <div className="max-w-4xl mx-auto relative z-10">
-        <Reveal><div className="text-center mb-12">
-          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Sneak Peek</p>
-          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Book Trailer</h2>
-          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
-          <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
+        <Reveal><div className="text-center mb-10 sm:mb-12">
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Sneak Peek</p>
+          <h1 id="trailer-page-heading" className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Book Trailer</h1>
+          <div className="w-16 sm:w-20 h-1 rounded-full mx-auto mb-6 sm:mb-8" style={{ background: theme.accent }} />
+          <p className="text-base sm:text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
             Watch the Dancing Queen come to life &mdash; from sunlit backyard dances to the quiet magic of a child&apos;s pillow at night.
           </p>
         </div></Reveal>
@@ -750,20 +812,20 @@ function ContactPage() {
   const { theme } = useApp();
   const [sent, setSent] = useState(false);
   return (
-    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+    <div id="main-content" className="min-h-screen pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 relative overflow-hidden" style={{ background: theme.bg }} role="main" aria-labelledby="contact-page-heading">
       <Butterflies count={3} /><QueenSparkles />
       <div className="max-w-2xl mx-auto relative z-10">
-        <Reveal><div className="text-center mb-12">
-          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Reach Out</p>
-          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Contact M\u00e9m\u00e8re</h2>
-          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
-          <p className="text-lg leading-relaxed" style={{ color: theme.mutedFg }}>
+        <Reveal><div className="text-center mb-10 sm:mb-12">
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Reach Out</p>
+          <h1 id="contact-page-heading" className="text-2xl sm:text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Contact M\u00e9m\u00e8re</h1>
+          <div className="w-16 sm:w-20 h-1 rounded-full mx-auto mb-6 sm:mb-8" style={{ background: theme.accent }} />
+          <p className="text-base sm:text-lg leading-relaxed" style={{ color: theme.mutedFg }}>
             For inquiries, press copies, or to share what The Dancing Queen means to your family.
           </p>
         </div></Reveal>
 
         <Reveal delay={200}>
-          <div className="rounded-2xl p-8 md:p-10 shadow-lg" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+          <div className="rounded-2xl p-6 sm:p-8 md:p-10 shadow-lg" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
             {sent ? (
               <div className="text-center py-12">
                 <p className="text-4xl mb-4">\uD83D\uDC8C</p>
@@ -773,18 +835,18 @@ function ContactPage() {
             ) : (
               <form onSubmit={e => { e.preventDefault(); setSent(true); }} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Your Name</label>
-                  <input type="text" required className="w-full px-4 py-3 rounded-xl text-base outline-none focus:ring-2" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="Enter your name" />
+                  <label htmlFor="contact-name" className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Your Name</label>
+                  <input id="contact-name" type="text" required className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg rounded-xl outline-none focus:ring-2" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="Enter your name" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Email Address</label>
-                  <input type="email" required className="w-full px-4 py-3 rounded-xl text-base outline-none focus:ring-2" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="you@example.com" />
+                  <label htmlFor="contact-email" className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Email Address</label>
+                  <input id="contact-email" type="email" required className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg rounded-xl outline-none focus:ring-2" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="you@example.com" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Your Message</label>
-                  <textarea required rows={5} className="w-full px-4 py-3 rounded-xl text-base outline-none focus:ring-2 resize-none" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="Share your thoughts..." />
+                  <label htmlFor="contact-message" className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Your Message</label>
+                  <textarea id="contact-message" required rows={5} className="w-full px-4 py-3 sm:py-4 text-base sm:text-lg rounded-xl outline-none focus:ring-2 resize-none" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="Share your thoughts..." />
                 </div>
-                <Button type="submit" size="lg" className="w-full font-semibold py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }}>
+                <Button type="submit" size="lg" className="w-full font-semibold py-5 sm:py-6 text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }}>
                   Send Message
                 </Button>
               </form>
@@ -803,22 +865,22 @@ function ContactPage() {
 function PurchasePage() {
   const { theme, navigate } = useApp();
   return (
-    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden flex items-center justify-center" style={{ background: theme.primary }}>
+    <div id="main-content" className="min-h-screen pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 relative overflow-hidden flex items-center justify-center" style={{ background: theme.primary }} role="main" aria-labelledby="purchase-page-heading">
       <Butterflies count={5} /><StarField />
       <div className="max-w-3xl mx-auto text-center relative z-10">
         <Reveal>
-          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-4" style={{ color: theme.accent }}>Available Now</p>
-          <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase mb-4" style={{ color: theme.accent }}>Available Now</p>
+          <h1 id="purchase-page-heading" className="text-3xl sm:text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
             Every Child Deserves<br /><span style={{ color: theme.accent }}>a Little Magic</span>
-          </h2>
-          <p className="text-lg text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
+          </h1>
+          <p className="text-base sm:text-lg text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
             The Dancing Queen is more than a bedtime story &mdash; it is a grandmother&apos;s love letter to the wonder of childhood, and to the tiny guardians who watch over our children&apos;s dreams.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }}>
+            <Button size="lg" className="w-full sm:w-auto font-semibold px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }}>
               Order Your Copy
             </Button>
-            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full border-2 hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("contact")}>
+            <Button size="lg" className="w-full sm:w-auto font-semibold px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base rounded-full border-2 hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("contact")}>
               Contact M\u00e9m\u00e8re
             </Button>
           </div>
@@ -1174,29 +1236,29 @@ function Footer() {
     { label: "Book Trailer", href: "trailer" },
   ];
   return (
-    <footer style={{ background: theme.primary, color: theme.primaryFg }} className="py-12 px-6 no-theme-transition">
+    <footer style={{ background: theme.primary, color: theme.primaryFg }} className="py-10 sm:py-12 px-4 sm:px-6 no-theme-transition" role="contentinfo">
       <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mb-8">
           <div>
-            <h4 className="font-semibold text-lg mb-3">The Dancing Queen</h4>
-            <p className="text-sm leading-relaxed opacity-70">A whimsical bedtime picture book by M\u00e9m\u00e8re. Dedicated to George and Myles &mdash; and to every child who still looks for a little magic before saying good night.</p>
+            <h4 className="font-semibold text-base sm:text-lg mb-3">The Dancing Queen</h4>
+            <p className="text-xs sm:text-sm leading-relaxed opacity-70">A whimsical bedtime picture book by M\u00e9m\u00e8re. Dedicated to George and Myles &mdash; and to every child who still looks for a little magic before saying good night.</p>
           </div>
           <div>
-            <h4 className="font-semibold text-lg mb-3">Quick Links</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="font-semibold text-base sm:text-lg mb-3">Quick Links</h4>
+            <ul className="space-y-2 text-xs sm:text-sm">
               {links.map(l => <li key={l.href}><button onClick={() => navigate(l.href)} className="hover:opacity-100 opacity-70 transition-opacity duration-200">{l.label}</button></li>)}
             </ul>
           </div>
-          <div>
-            <h4 className="font-semibold text-lg mb-3">Connect</h4>
-            <p className="text-sm leading-relaxed mb-4 opacity-70">For inquiries, press copies, or to share what The Dancing Queen means to your family.</p>
-            <Button size="sm" className="rounded-full text-sm font-medium" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("contact")}>
+          <div className="sm:col-span-2 md:col-span-1">
+            <h4 className="font-semibold text-base sm:text-lg mb-3">Connect</h4>
+            <p className="text-xs sm:text-sm leading-relaxed mb-4 opacity-70">For inquiries, press copies, or to share what The Dancing Queen means to your family.</p>
+            <Button size="sm" className="rounded-full text-xs sm:text-sm font-medium" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("contact")}>
               Get in Touch
             </Button>
           </div>
         </div>
         <hr className="opacity-10 mb-6" />
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-xs opacity-40">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] sm:text-xs opacity-40">
           <p>&copy; {new Date().getFullYear()} The Dancing Queen. All Rights Reserved.</p>
           <p>Written with love by <span style={{ color: theme.accent }}>M\u00e9m\u00e8re</span> for George and Myles</p>
         </div>
@@ -1217,6 +1279,8 @@ export default function Home() {
 
   // Apply theme to DOM
   useEffect(() => { applyThemeToDOM(theme); }, [theme]);
+
+  usePageSEO(page);
 
   const navigate = useCallback((p: PageId) => {
     if (p === page || transitioning) return;
@@ -1241,7 +1305,7 @@ export default function Home() {
     <ThemeCtx.Provider value={ctx}>
       <div className="min-h-screen flex flex-col" style={{ background: page === "experience" ? "#000" : theme.bg }}>
         {page !== "experience" && <Nav />}
-        <main className="flex-1" style={{ opacity: transitioning ? 0 : 1, transform: transitioning ? "translateY(16px)" : "translateY(0)", transition: "opacity 0.35s ease, transform 0.35s ease", background: page === "experience" ? "#000" : "transparent" }}>
+        <main id="main-content" className="flex-1" role="main" aria-label={PAGE_SEO[page]?.heading || "Main content"} style={{ opacity: transitioning ? 0 : 1, transform: transitioning ? "translateY(16px)" : "translateY(0)", transition: "opacity 0.35s ease, transform 0.35s ease", background: page === "experience" ? "#000" : "transparent" }}>
           {pages[page]}
         </main>
         {page !== "experience" && <Footer />}
