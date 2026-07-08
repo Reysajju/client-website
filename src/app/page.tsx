@@ -1017,13 +1017,11 @@ function ExperiencePage() {
   const { theme, navigate } = useApp();
   const rafRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [frame, setFrame] = useState(0);
   const [chapterProgress, setChapterProgress] = useState(0); // 0-1 within current chapter
   const [activeChapter, setActiveChapter] = useState(0);
-  const [showIntro, setShowIntro] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const [videoLoaded, setVideoLoaded] = useState(false);
+  const preloadRef = useRef<HTMLImageElement[]>([]);
 
   // Detect mobile for responsive scroll speed
   useEffect(() => {
@@ -1045,7 +1043,19 @@ function ExperiencePage() {
     };
   }, []);
 
-  // Scroll → frame mapping and video scrubbing
+  // Preload nearby frames
+  useEffect(() => {
+    const range = 5;
+    for (let i = Math.max(0, frame - range); i <= Math.min(TOTAL_FRAMES - 1, frame + range); i++) {
+      if (!preloadRef.current[i]) {
+        const img = new window.Image();
+        img.src = getFramePath(i);
+        preloadRef.current[i] = img;
+      }
+    }
+  }, [frame]);
+
+  // Scroll → frame mapping
   useEffect(() => {
     const onScroll = () => {
       cancelAnimationFrame(rafRef.current);
@@ -1056,15 +1066,8 @@ function ExperiencePage() {
         const rect = el.getBoundingClientRect();
         const scrollInContainer = Math.max(0, -rect.top);
         
-        const maxScroll = (TOTAL_FRAMES - 1) * scrollPx;
-        const progress = Math.min(1, Math.max(0, scrollInContainer / maxScroll));
-        
         const idx = Math.min(TOTAL_FRAMES - 1, Math.max(0, Math.floor(scrollInContainer / scrollPx)));
         setFrame(idx);
-
-        if (videoRef.current && videoRef.current.duration) {
-          videoRef.current.currentTime = progress * videoRef.current.duration;
-        }
 
         // Find active chapter
         const ch = STORY_CHAPTERS.findIndex(c => idx >= c.startFrame && idx <= c.endFrame);
@@ -1081,15 +1084,6 @@ function ExperiencePage() {
     onScroll();
     return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(rafRef.current); };
   }, [scrollPx]);
-
-  const startExperience = useCallback(() => {
-    setShowIntro(false);
-    requestAnimationFrame(() => {
-      window.scrollTo(0, 0);
-      setTimeout(() => window.scrollTo(0, 0), 50);
-      setTimeout(() => window.scrollTo(0, 0), 200);
-    });
-  }, []);
 
   const chapter = STORY_CHAPTERS[activeChapter];
 
@@ -1109,26 +1103,6 @@ function ExperiencePage() {
 
   return (
     <>
-      {/* Intro overlay */}
-      {showIntro && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center no-theme-transition overflow-hidden" style={{ background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}CC 40%, ${theme.bg} 100%)` }}>
-          <div className="absolute inset-0 no-theme-transition" style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.15) 0%, transparent 60%)" }} />
-          <Butterflies count={4} /><StarField />
-          <div className="text-center relative z-10 px-4 sm:px-6 animate-page-in max-w-lg mx-auto">
-            <p className="text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] uppercase mb-3 sm:mb-4" style={{ color: theme.accent }}>Scroll-Driven Story</p>
-            <h2 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white leading-[1.1] sm:leading-tight mb-4 sm:mb-6" style={{ textShadow: "0 4px 30px rgba(0,0,0,0.4)" }}>
-              Experience<br /><span style={{ color: theme.accent, textShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>the Book</span>
-            </h2>
-            <p className="text-sm sm:text-base md:text-lg text-white/85 max-w-md mx-auto mb-8 sm:mb-10 leading-relaxed">
-              Scroll gently to unfold the story of The Dancing Queen, driven by a beautifully dynamic video experience.
-            </p>
-            <Button size="lg" className="font-semibold px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 animate-float" style={{ background: theme.accent, color: theme.accentFg }} onClick={startExperience}>
-              Begin the Journey
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Scroll container */}
       <div ref={containerRef} style={{ height: `${TOTAL_FRAMES * scrollPx}px`, background: frameImgError ? theme.primary : "#000" }} className="relative no-theme-transition">
         {/* Sticky viewport */}
@@ -1147,37 +1121,33 @@ function ExperiencePage() {
             </div>
           )}
 
-          {/* Dynamic Video Element */}
+          {/* Current frame image */}
           {!frameImgError && (
-            <video
-              ref={videoRef}
-              src="/trailer.mp4"
+            <img
+              src={getFramePath(frame)}
+              alt={chapter?.title ? `The Dancing Queen — ${chapter.title}` : "The Dancing Queen — story illustration"}
               className="absolute inset-0 w-full h-full object-cover no-theme-transition"
-              playsInline
-              muted
-              preload="auto"
-              onLoadedMetadata={() => setVideoLoaded(true)}
               onError={() => setFrameImgError(true)}
             />
           )}
 
           {/* Story text overlay */}
           {!frameImgError && chapter && chapter.lines.length > 0 && (
-            <div className="absolute inset-0 pointer-events-none z-10">
-              <div
-                className={`absolute px-6 sm:px-8 w-full max-w-xl ${
-                  chapter.textPosition === "center" ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center" :
-                  chapter.textPosition === "top" ? "top-24 sm:top-32 left-1/2 -translate-x-1/2 text-center" :
-                  chapter.textPosition === "bottom" ? "bottom-24 sm:bottom-32 left-1/2 -translate-x-1/2 text-center" :
-                  chapter.textPosition === "left" ? "top-1/2 left-6 sm:left-16 -translate-y-1/2 text-left" :
-                  chapter.textPosition === "right" ? "top-1/2 right-6 sm:right-16 -translate-y-1/2 text-right" :
-                  chapter.textPosition === "top-left" ? "top-24 sm:top-32 left-6 sm:left-16 text-left" :
-                  chapter.textPosition === "top-right" ? "top-24 sm:top-32 right-6 sm:right-16 text-right" :
-                  chapter.textPosition === "bottom-left" ? "bottom-24 sm:bottom-32 left-6 sm:left-16 text-left" :
-                  chapter.textPosition === "bottom-right" ? "bottom-24 sm:bottom-32 right-6 sm:right-16 text-right" :
-                  ""
-                }`}
-              >
+            <div 
+              className={`absolute inset-0 pointer-events-none z-10 flex p-6 sm:p-10 md:p-16 ${
+                chapter.textPosition === "center" ? "items-center justify-center text-center" :
+                chapter.textPosition === "top" ? "items-start justify-center text-center pt-24 sm:pt-32" :
+                chapter.textPosition === "bottom" ? "items-end justify-center text-center pb-24 sm:pb-32" :
+                chapter.textPosition === "left" ? "items-center justify-start text-left" :
+                chapter.textPosition === "right" ? "items-center justify-end text-right" :
+                chapter.textPosition === "top-left" ? "items-start justify-start text-left pt-24 sm:pt-32" :
+                chapter.textPosition === "top-right" ? "items-start justify-end text-right pt-24 sm:pt-32" :
+                chapter.textPosition === "bottom-left" ? "items-end justify-start text-left pb-24 sm:pb-32" :
+                chapter.textPosition === "bottom-right" ? "items-end justify-end text-right pb-24 sm:pb-32" :
+                "items-center justify-center text-center"
+              }`}
+            >
+              <div className="w-full max-w-lg md:max-w-xl">
                 <div
                   style={{
                     opacity: textOpacity,
