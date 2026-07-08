@@ -1,0 +1,1256 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useRef, useState, useCallback, createContext, useContext } from "react";
+     4→import Image from "next/image";
+     5→import { Button } from "@/components/ui/button";
+     6→
+     7→/* ═══════════════════════════════════════════════════
+     8→   TYPES & THEME DEFINITIONS
+     9→   ═══════════════════════════════════════════════════ */
+    10→
+    11→type PageId = "home" | "book" | "author" | "trailer" | "contact" | "purchase" | "experience";
+    12→
+    13→interface ColorTheme {
+    14→  name: string;
+    15→  bg: string; bgAlt: string; fg: string;
+    16→  primary: string; primaryFg: string;
+    17→  secondary: string; secondaryFg: string;
+    18→  accent: string; accentFg: string;
+    19→  card: string; cardFg: string;
+    20→  muted: string; mutedFg: string;
+    21→  border: string;
+    22→  heroOverlay: string;
+    23→}
+    24→
+    25→const THEMES: Record<string, ColorTheme> = {
+    26→  cream:       { name:"Cream",       bg:"#FFF8F0",bgAlt:"#FFF0E0",fg:"#5A4A3A",primary:"#B8862D",primaryFg:"#FFF",secondary:"#F5E6D8",secondaryFg:"#8A6A4A",accent:"#D4A853",accentFg:"#3A2818",card:"#FFFFFF",cardFg:"#5A4A3A",muted:"#F0E4D4",mutedFg:"#9A8A7A",border:"#E0D0C0",heroOverlay:"rgba(90,74,58,0.25)" },
+    27→  blush:       { name:"Blush",       bg:"#FFF0EE",bgAlt:"#FFE4E0",fg:"#6A3A3A",primary:"#B85050",primaryFg:"#FFF",secondary:"#FFE4E0",secondaryFg:"#A06060",accent:"#E8845A",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#6A3A3A",muted:"#F5DDDD",mutedFg:"#A08080",border:"#F0CCCC",heroOverlay:"rgba(106,58,58,0.25)" },
+    28→  olive:       { name:"Olive",       bg:"#F2F5E8",bgAlt:"#E8EDD8",fg:"#3A4A2A",primary:"#4E6828",primaryFg:"#FFF",secondary:"#E8EDD8",secondaryFg:"#5A7030",accent:"#8BA050",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#3A4A2A",muted:"#E0E8D0",mutedFg:"#7A8A6A",border:"#CDDCB8",heroOverlay:"rgba(58,74,42,0.25)" },
+    29→  gold:        { name:"Gold",        bg:"#FFF8E8",bgAlt:"#FFF0D0",fg:"#5A4A2A",primary:"#B89020",primaryFg:"#FFF",secondary:"#FFF0D0",secondaryFg:"#A08030",accent:"#D4A853",accentFg:"#3A2818",card:"#FFFFFF",cardFg:"#5A4A2A",muted:"#F0E8C8",mutedFg:"#9A8A5A",border:"#E0D4A0",heroOverlay:"rgba(90,74,42,0.25)" },
+    30→  "warm-brown":{ name:"Warm Brown",  bg:"#F5EDE0",bgAlt:"#EBE0D0",fg:"#4A3A2A",primary:"#6A4A2A",primaryFg:"#FFF",secondary:"#EBE0D0",secondaryFg:"#7A5A3A",accent:"#A08060",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#4A3A2A",muted:"#E4D8C8",mutedFg:"#8A7A6A",border:"#D4C4A8",heroOverlay:"rgba(74,58,42,0.25)" },
+    31→  lavender:    { name:"Lavender",    bg:"#F5F0FF",bgAlt:"#ECE4FF",fg:"#4A3A5A",primary:"#7A5AA0",primaryFg:"#FFF",secondary:"#ECE4FF",secondaryFg:"#8A6AAA",accent:"#B090D0",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#4A3A5A",muted:"#E4D8F0",mutedFg:"#8A7A9A",border:"#D0C0E8",heroOverlay:"rgba(74,58,90,0.25)" },
+    32→  mauve:       { name:"Mauve",       bg:"#F8F0F5",bgAlt:"#F0E4ED",fg:"#5A3A4A",primary:"#8A5070",primaryFg:"#FFF",secondary:"#F0E4ED",secondaryFg:"#9A6080",accent:"#C090A8",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#5A3A4A",muted:"#ECDDE4",mutedFg:"#9A8090",border:"#DCC0D0",heroOverlay:"rgba(90,58,74,0.25)" },
+    33→  plum:        { name:"Plum",        bg:"#F5E8F5",bgAlt:"#EBD8EB",fg:"#4A2A4A",primary:"#6A2A6A",primaryFg:"#FFF",secondary:"#EBD8EB",secondaryFg:"#7A3A7A",accent:"#A060A0",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#4A2A4A",muted:"#E4D0E4",mutedFg:"#8A6A8A",border:"#D0B0D0",heroOverlay:"rgba(74,42,74,0.25)" },
+    34→  "deep-plum": { name:"Deep Plum",   bg:"#2A1528",bgAlt:"#351D33",fg:"#E8D8E8",primary:"#C8A0C8",primaryFg:"#2A1528",secondary:"#3A2038",secondaryFg:"#D0B8D0",accent:"#D4A853",accentFg:"#1A0A18",card:"#3A2038",cardFg:"#E8D8E8",muted:"#32202F",mutedFg:"#9A7A9A",border:"#4A2848",heroOverlay:"rgba(42,21,40,0.4)" },
+    35→};
+    36→
+    37→const PALETTE = [
+    38→  { key:"cream",      color:"#FFF8F0", label:"Cream",     phase:"Morning" },
+    39→  { key:"blush",      color:"#F5E6D8", label:"Blush",     phase:"Opening" },
+    40→  { key:"olive",      color:"#6B7B3A", label:"Olive",     phase:"Daytime" },
+    41→  { key:"gold",       color:"#D4A853", label:"Gold",      phase:"Midday" },
+    42→  { key:"warm-brown", color:"#8B6B4A", label:"Warm Brown",phase:"Afternoon"},
+    43→  { key:"lavender",   color:"#C8B4D8", label:"Lavender",  phase:"Dusk" },
+    44→  { key:"mauve",      color:"#9B7A8A", label:"Mauve",     phase:"Twilight" },
+    45→  { key:"plum",       color:"#6B3A6B", label:"Plum",      phase:"Night" },
+    46→  { key:"deep-plum",  color:"#4A2848", label:"Deep Plum", phase:"Dreams" },
+    47→];
+    48→
+    49→/* ═══════════════════════════════════════════════════
+    50→   SHARED DATA
+    51→   ═══════════════════════════════════════════════════ */
+    52→
+    53→const VERSES = [
+    54→  { text:"The Dancing Queen, so light and Fair, dances for children everywhere.", label:"Opening lines" },
+    55→  { text:"She'll balance and bounce and swing on a curl, or slide down on a long straight pony tailed girl.", label:"The playful spirit" },
+    56→  { text:"She prefers soft noises and the songs of the night.", label:"As evening falls" },
+    57→  { text:"Your night dreams are special and guarded with care.", label:"Her promise" },
+    58→];
+    59→
+    60→const FEATURES = [
+    61→  { icon:"\uD83C\uDF19", title:"Bedtime Ritual", desc:"The story mirrors a real bedtime routine \u2014 from daytime energy and play through a gentle dusk transition to a calm, safe nighttime resolution. Each reading becomes part of a child\u2019s own winding-down ritual, helping ease the shift from busy day to peaceful sleep." },
+    62→  { icon:"\uD83E\uDDDA", title:"Guardian Fairy Mythology", desc:"The Dancing Queen introduces an entirely new piece of children\u2019s mythology \u2014 a tiny, winged, fairy-like being who lives in a child\u2019s hair, dances on curls and ponytails, and stands watch over their pillow as they sleep. She is the child\u2019s own personal guardian of dreams." },
+    63→  { icon:"\uD83C\uDFA8", title:"A Day-to-Night Color Journey", desc:"The illustrations carry the reader through a breathtaking visual arc: warm cream and blush tones give way to bright forest greens and golden hues for backyard play, then gradually crossfade into lavender and deep plum as night falls \u2014 the art itself tells the story." },
+    64→  { icon:"\uD83D\uDCD6", title:"Rhyming Verse, Read Aloud", desc:"Written in a light, musical rhyming style meant to be read aloud by a parent or grandparent at bedtime. The verse has a natural, bouncing rhythm that holds the attention of young listeners while carrying them gently toward sleep." },
+    65→  { icon:"\uD83D\uDC76", title:"Ages 2 to 6", desc:"Designed for the youngest readers and listeners \u2014 children aged roughly two to six who still look for a little magic before saying good night. The simple, repeating rhythms and warm, reassuring message make it perfect for the bedtime crowd." },
+    66→  { icon:"\uD83D\uDC9D", title:"A Grandmother\u2019s Gift", desc:"Written by M\u00e9m\u00e8re and dedicated to her grandsons George and Myles, whom she lovingly calls \u201cCritter and Bug.\u201d The book closes with a dedication \u201cTo Every Child\u201d who believes in tiny wonders, extending this grandmother\u2019s love to families everywhere." },
+    67→];
+    68→
+    69→/* ═══════════════════════════════════════════════════
+    70→   THEME CONTEXT
+    71→   ═══════════════════════════════════════════════════ */
+    72→
+    73→interface ThemeCtxValue {
+    74→  theme: ColorTheme;
+    75→  themeKey: string;
+    76→  setTheme: (key: string) => void;
+    77→  navigate: (p: PageId) => void;
+    78→  page: PageId;
+    79→}
+    80→
+    81→const ThemeCtx = createContext<ThemeCtxValue>({
+    82→  theme: THEMES.plum,
+    83→  themeKey: "plum",
+    84→  setTheme: () => {},
+    85→  navigate: () => {},
+    86→  page: "home",
+    87→});
+    88→
+    89→function useApp() { return useContext(ThemeCtx); }
+    90→
+    91→function applyThemeToDOM(t: ColorTheme) {
+    92→  const r = document.documentElement.style;
+    93→  r.setProperty("--background", t.bg);
+    94→  r.setProperty("--foreground", t.fg);
+    95→  r.setProperty("--primary", t.primary);
+    96→  r.setProperty("--primary-foreground", t.primaryFg);
+    97→  r.setProperty("--secondary", t.secondary);
+    98→  r.setProperty("--secondary-foreground", t.secondaryFg);
+    99→  r.setProperty("--accent", t.accent);
+   100→  r.setProperty("--accent-foreground", t.accentFg);
+   101→  r.setProperty("--card", t.card);
+   102→  r.setProperty("--card-foreground", t.cardFg);
+   103→  r.setProperty("--muted", t.muted);
+   104→  r.setProperty("--muted-foreground", t.mutedFg);
+   105→  r.setProperty("--border", t.border);
+   106→  r.setProperty("--ring", t.accent);
+   107→}
+   108→
+   109→/* ═══════════════════════════════════════════════════
+   110→   DECORATIVE COMPONENTS
+   111→   ═══════════════════════════════════════════════════ */
+   112→
+   113→function StarField() {
+   114→  const [stars, setStars] = useState<Array<{id:number;left:string;top:string;delay:string;size:number}>>([]);
+   115→  useEffect(() => {
+   116→    setStars(Array.from({ length: 18 }, (_, i) => ({
+   117→      id: i, left: `${Math.random()*100}%`, top: `${Math.random()*100}%`,
+   118→      delay: `${Math.random()*3}s`, size: Math.random()*3+2,
+   119→    })));
+   120→  }, []);
+   121→  return (
+   122→    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+   123→      {stars.map(s => <div key={s.id} className="star" style={{ left:s.left, top:s.top, width:`${s.size}px`, height:`${s.size}px`, animationDelay:s.delay, background:"var(--accent,#D4A853)" }} />)}
+   124→    </div>
+   125→  );
+   126→}
+   127→
+   128→function Butterflies({ count = 3 }: { count?: number }) {
+   129→  const { theme } = useApp();
+   130→  const paths = ["path-1","path-2","path-3"];
+   131→  const positions = [
+   132→    { top:"12%", left:"8%" },
+   133→    { top:"55%", left:"78%" },
+   134→    { top:"30%", left:"65%" },
+   135→    { top:"70%", left:"20%" },
+   136→    { top:"18%", left:"85%" },
+   137→  ];
+   138→  const bColor = theme.accent;
+   139→  return (
+   140→    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+   141→      {Array.from({ length: count }).map((_, i) => (
+   142→        <div key={i} className={`butterfly-wrap ${paths[i % 3]}`} style={{ ...positions[i % 5], animationDelay: `${i*2}s` }}>
+   143→          <div className="butterfly">
+   144→            <div className="butterfly-wing left" style={{ background: bColor }} />
+   145→            <div className="butterfly-body" style={{ background: bColor }} />
+   146→            <div className="butterfly-wing right" style={{ background: bColor }} />
+   147→          </div>
+   148→        </div>
+   149→      ))}
+   150→    </div>
+   151→  );
+   152→}
+   153→
+   154→function QueenSparkles() {
+   155→  const { theme } = useApp();
+   156→  const [sparkles, setSparkles] = useState<Array<{id:number;left:string;top:string;delay:string;size:number}>>([]);
+   157→  useEffect(() => {
+   158→    setSparkles(Array.from({ length: 8 }, (_, i) => ({
+   159→      id: i, left: `${10+Math.random()*80}%`, top: `${10+Math.random()*80}%`,
+   160→      delay: `${Math.random()*3}s`, size: 4 + Math.random()*5,
+   161→    })));
+   162→  }, []);
+   163→  return (
+   164→    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+   165→      {sparkles.map(s => <div key={s.id} className="queen-sparkle" style={{ left:s.left, top:s.top, width:`${s.size}px`, height:`${s.size}px`, animationDelay:s.delay, background: theme.accent }} />)}
+   166→      <div className="queen-crown" style={{ top:"8%", right:"12%", background: theme.accent, animationDelay:"0s" }} />
+   167→      <div className="queen-crown" style={{ bottom:"15%", left:"8%", background: theme.primary, animationDelay:"3s", width:"14px", height:"10px" }} />
+   168→    </div>
+   169→  );
+   170→}
+   171→
+   172→/* ─── Scroll-reveal ─── */
+   173→function useReveal() {
+   174→  const ref = useRef<HTMLDivElement>(null);
+   175→  const [visible, setVisible] = useState(false);
+   176→  useEffect(() => {
+   177→    const el = ref.current; if (!el) return;
+   178→    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.unobserve(el); } }, { threshold: 0.1 });
+   179→    obs.observe(el);
+   180→    return () => obs.disconnect();
+   181→  }, []);
+   182→  return { ref, visible };
+   183→}
+   184→
+   185→function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+   186→  const { ref, visible } = useReveal();
+   187→  return <div ref={ref} className={`reveal ${visible?"visible":""} ${className}`} style={{ transitionDelay:`${delay}ms` }}>{children}</div>;
+   188→}
+   189→
+   190→function Divider() {
+   191→  return <div className="whimsical-divider" aria-hidden="true"><span style={{ color:"var(--accent,#D4A853)" }} className="text-xl">&#10022;</span></div>;
+   192→}
+   193→
+   194→/* ═══════════════════════════════════════════════════
+   195→   NAVIGATION
+   196→   ═══════════════════════════════════════════════════ */
+   197→
+   198→function Nav() {
+   199→  const { page, navigate, theme } = useApp();
+   200→  const [mobileOpen, setMobileOpen] = useState(false);
+   201→  const [scrolled, setScrolled] = useState(false);
+   202→
+   203→  useEffect(() => {
+   204→    const onScroll = () => setScrolled(window.scrollY > 50);
+   205→    window.addEventListener("scroll", onScroll, { passive: true });
+   206→    return () => window.removeEventListener("scroll", onScroll);
+   207→  }, []);
+   208→
+   209→  const links: { label: string; href: PageId }[] = [
+   210→    { label: "Home", href: "home" },
+   211→    { label: "The Book", href: "book" },
+   212→    { label: "About M\u00e9m\u00e8re", href: "author" },
+   213→    { label: "Trailer", href: "trailer" },
+   214→  ];
+   215→
+   216→  const go = useCallback((p: PageId) => { navigate(p); setMobileOpen(false); }, [navigate]);
+   217→
+   218→  return (
+   219→    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${page === "home" && !scrolled ? "bg-transparent shadow-none" : "bg-white/85 backdrop-blur-md shadow-sm"}`} style={{ borderColor: theme.border }}>
+   220→      <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
+   221→        <button onClick={() => go("home")} className="text-lg font-semibold tracking-wide" style={{ color: page === "home" && !scrolled ? "#FFFFFF" : theme.primary }}>
+   222→          The Dancing Queen
+   223→        </button>
+   224→        <div className="hidden md:flex items-center gap-8">
+   225→          {links.map(l => (
+   226→            <button key={l.href} onClick={() => go(l.href)}
+   227→              className={`text-sm font-medium transition-colors duration-300 ${page===l.href ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
+   228→              style={{ color: page === "home" && !scrolled ? "#FFFFFF" : theme.primary }}>
+   229→              {l.label}
+   230→            </button>
+   231→          ))}
+   232→        </div>
+   233→        <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
+   234→          <span className={`block w-6 h-0.5 transition-all duration-300 ${mobileOpen?"rotate-45 translate-y-2":""}`} style={{background: page === "home" && !scrolled ? "#FFFFFF" : theme.primary}} />
+   235→          <span className={`block w-6 h-0.5 transition-all duration-300 ${mobileOpen?"opacity-0":""}`} style={{background: page === "home" && !scrolled ? "#FFFFFF" : theme.primary}} />
+   236→          <span className={`block w-6 h-0.5 transition-all duration-300 ${mobileOpen?"-rotate-45 -translate-y-2":""}`} style={{background: page === "home" && !scrolled ? "#FFFFFF" : theme.primary}} />
+   237→        </button>
+   238→      </div>
+   239→      {mobileOpen && (
+   240→        <div className="md:hidden shadow-lg" style={{ background: theme.card, borderTop: `1px solid ${theme.border}` }}>
+   241→          <div className="flex flex-col px-6 py-4 gap-3">
+   242→            {links.map(l => (
+   243→              <button key={l.href} onClick={() => go(l.href)} className="text-left py-2 font-medium transition-colors" style={{ color: theme.primary }}>
+   244→                {l.label}
+   245→              </button>
+   246→            ))}
+   247→          </div>
+   248→        </div>
+   249→      )}
+   250→    </nav>
+   251→  );
+   252→}
+   253→
+   254→/* ═══════════════════════════════════════════════════
+   255→   HOME PAGE — Hero + Book + Author + Trailer + CTA
+   256→   ═══════════════════════════════════════════════════ */
+   257→
+   258→function HeroSection() {
+   259→  const { theme, navigate } = useApp();
+   260→  const sectionRef = useRef<HTMLDivElement>(null);
+   261→  const videoRef = useRef<HTMLVideoElement>(null);
+   262→  const rafRef = useRef<number>(0);
+   263→  const [scrollProg, setScrollProg] = useState(0);
+   264→  const [isMuted, setIsMuted] = useState(false);
+   265→
+   266→  useEffect(() => {
+   267→    const v = videoRef.current; if (!v) return;
+   268→    v.muted = false; v.volume = 1;
+   269→    v.play().catch(() => {
+   270→      v.muted = true; setIsMuted(true);
+   271→      const unmute = () => { v.muted = false; v.volume = 1; setIsMuted(false); document.removeEventListener("click",unmute); document.removeEventListener("touchstart",unmute); };
+   272→      document.addEventListener("click", unmute, { once: true });
+   273→      document.addEventListener("touchstart", unmute, { once: true });
+   274→    });
+   275→  }, []);
+   276→
+   277→  useEffect(() => {
+   278→    const v = videoRef.current; const s = sectionRef.current; if (!v || !s) return;
+   279→    const onScroll = () => {
+   280→      cancelAnimationFrame(rafRef.current);
+   281→      rafRef.current = requestAnimationFrame(() => {
+   282→        const rect = s.getBoundingClientRect();
+   283→        const prog = Math.max(0, Math.min(1, -rect.top / (window.innerHeight * 0.35)));
+   284→        setScrollProg(prog);
+   285→        const fadeProg = Math.max(0, Math.min(1, -rect.bottom / rect.height));
+   286→        v.volume = Math.max(0, 1 - fadeProg);
+   287→        if (v.volume < 0.01) v.muted = true;
+   288→        else if (!isMuted) v.muted = false;
+   289→      });
+   290→    };
+   291→    window.addEventListener("scroll", onScroll, { passive: true });
+   292→    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(rafRef.current); };
+   293→  }, [isMuted]);
+   294→
+   295→  const toggleMute = useCallback(() => {
+   296→    const v = videoRef.current; if (!v) return;
+   297→    v.muted = !v.muted; setIsMuted(v.muted); if (!v.muted) v.volume = 1;
+   298→  }, []);
+   299→
+   300→  const opacity = Math.min(1, scrollProg * 2.5);
+   301→  const translateY = (1 - Math.min(1, scrollProg * 2.5)) * 50;
+   302→
+   303→  return (
+   304→    <div ref={sectionRef} className="relative" style={{ minHeight: "180vh" }}>
+   305→      {/* Sticky video viewport */}
+   306→      <div className="sticky top-0 h-screen overflow-hidden">
+   307→        <video ref={videoRef} src="/trailer.mp4" autoPlay loop muted={false} playsInline className="absolute inset-0 w-full h-full object-cover no-theme-transition" />
+   308→        {/* Strong center overlay to block all video text */}
+   309→        <div className="absolute inset-0 z-[1] pointer-events-none" style={{ background: `radial-gradient(ellipse 75% 65% at 50% 45%, ${theme.heroOverlay.replace(/[\d.]+\)$/, "0.92)")}, ${theme.heroOverlay.replace(/[\d.]+\)$/, "0.60)")} 50%, transparent 88%)` }} />
+   310→
+   311→        <StarField />
+   312→
+   313→        {/* Scroll-revealed text */}
+   314→        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+   315→          <div className="text-center px-6 max-w-4xl mx-auto pointer-events-auto" style={{ opacity, transform: `translateY(${translateY}px)`, transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}>
+   316→            <p className="text-sm md:text-base tracking-[0.3em] uppercase mb-5" style={{ color: theme.accent, textShadow: "0 2px 16px rgba(0,0,0,0.7)" }}>
+   317→              A Bedtime Story by M\u00e9m\u00e8re
+   318→            </p>
+   319→            <h1 className="text-5xl sm:text-6xl md:text-8xl font-bold text-white leading-tight mb-6" style={{ textShadow: "0 4px 30px rgba(0,0,0,0.85), 0 2px 10px rgba(0,0,0,0.6)" }}>
+   320→              The Dancing<br /><span style={{ color: theme.accent, textShadow: "0 4px 30px rgba(0,0,0,0.7)" }}>Queen</span>
+   321→            </h1>
+   322→            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-10" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.75)" }}>
+   323→              So light and fair, she dances for children everywhere.
+   324→              <br /><span className="text-white/70 text-base">A whimsical tale of a tiny winged guardian who watches over every child&apos;s dreams.</span>
+   325→            </p>
+   326→            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+   327→              <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("book")}>
+   328→                Discover the Story
+   329→              </Button>
+   330→              <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full border-2 shadow-lg backdrop-blur-sm hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("trailer")}>
+   331→                Watch the Trailer
+   332→              </Button>
+   333→              <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full border-2 shadow-lg backdrop-blur-sm hover:scale-105 transition-all duration-300" style={{ borderColor: theme.accent+"80", color: theme.accent, background: "rgba(0,0,0,0.15)" }} onClick={() => navigate("experience")}>
+   334→                Experience the Book
+   335→              </Button>
+   336→            </div>
+   337→          </div>
+   338→        </div>
+   339→
+   340→        {/* Mute button */}
+   341→        <button onClick={toggleMute} aria-label={isMuted?"Unmute video":"Mute video"} className="absolute bottom-8 right-8 z-20 w-11 h-11 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/25 hover:scale-110 transition-all duration-300 no-theme-transition">
+   342→          {isMuted ? (
+   343→            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+   344→          ) : (
+   345→            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+   346→          )}
+   347→        </button>
+   348→
+   349→        {/* Scroll hint */}
+   350→        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-float" style={{ opacity: Math.max(0, 1 - scrollProg * 3) }}>
+   351→          <svg className="w-6 h-6 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+   352→        </div>
+   353→      </div>
+   354→    </div>
+   355→  );
+   356→}
+   357→
+   358→/* ─── Home: Book Highlights Section ─── */
+   359→function HomeBookSection() {
+   360→  const { theme, navigate } = useApp();
+   361→  return (
+   362→    <section className="py-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   363→      <Butterflies count={3} /><QueenSparkles />
+   364→      <div className="max-w-6xl mx-auto relative z-10">
+   365→        <Reveal><div className="text-center mb-16">
+   366→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Story</p>
+   367→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About the Book</h2>
+   368→          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
+   369→          <p className="text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
+   370→            The Dancing Queen invents a new piece of children&apos;s mythology &mdash; a tiny, light, fairy-like being with wings who lives in a child&apos;s hair. By day she plays in backyards; as evening falls, she tucks her wings in close and stands guard over their dreams.
+   371→          </p>
+   372→        </div></Reveal>
+   373→
+   374→        <Reveal delay={150}><div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+   375→          {VERSES.map(v => (
+   376→            <div key={v.label} className="rounded-2xl p-6 md:p-8 shadow-sm" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   377→              <p className="text-lg md:text-xl font-medium italic leading-relaxed" style={{ color: theme.primary }}>&ldquo;{v.text}&rdquo;</p>
+   378→              <p className="text-sm mt-3" style={{ color: theme.mutedFg }}>{v.label}</p>
+   379→            </div>
+   380→          ))}
+   381→        </div></Reveal>
+   382→
+   383→        <Divider />
+   384→
+   385→        <Reveal delay={200}><div className="text-center mt-10 mb-10">
+   386→          <h3 className="text-2xl md:text-3xl font-semibold mb-4" style={{ color: theme.primary }}>What Makes This Book Special</h3>
+   387→          <p className="max-w-xl mx-auto" style={{ color: theme.mutedFg }}>Every detail is crafted to create a bedtime experience children will ask for night after night.</p>
+   388→        </div></Reveal>
+   389→
+   390→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+   391→          {FEATURES.map((f, i) => (
+   392→            <Reveal key={f.title} delay={i*80}>
+   393→              <div className="rounded-2xl p-6 md:p-8 h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   394→                <span className="text-3xl mb-4 block">{f.icon}</span>
+   395→                <h4 className="text-lg font-semibold mb-3" style={{ color: theme.primary }}>{f.title}</h4>
+   396→                <p className="text-sm leading-relaxed" style={{ color: theme.mutedFg }}>{f.desc}</p>
+   397→              </div>
+   398→            </Reveal>
+   399→          ))}
+   400→        </div>
+   401→
+   402→        <Reveal delay={300}><div className="mt-16 rounded-2xl p-8 md:p-10" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   403→          <h3 className="text-xl font-semibold mb-6 text-center" style={{ color: theme.primary }}>Book Details</h3>
+   404→          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+   405→            {[{l:"Format",v:"Picture Book"},{l:"Pages",v:"32 pages"},{l:"Trim",v:'8.75" x 8.75"'},{l:"Ages",v:"2 \u2013 6"}].map(item => (
+   406→              <div key={item.l}>
+   407→                <p className="text-xs uppercase tracking-wider font-medium mb-1" style={{ color: theme.accent }}>{item.l}</p>
+   408→                <p className="text-lg font-semibold" style={{ color: theme.primary }}>{item.v}</p>
+   409→              </div>
+   410→            ))}
+   411→          </div>
+   412→        </div></Reveal>
+   413→
+   414→        <Reveal delay={200}><div className="mt-12 text-center">
+   415→          <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }} onClick={() => navigate("book")}>
+   416→            Explore the Full Book Page
+   417→          </Button>
+   418→        </div></Reveal>
+   419→      </div>
+   420→    </section>
+   421→  );
+   422→}
+   423→
+   424→/* ─── Home: Author Section ─── */
+   425→function HomeAuthorSection() {
+   426→  const { theme, themeKey, setTheme, navigate } = useApp();
+   427→  return (
+   428→    <section className="py-20 px-6 relative overflow-hidden" style={{ background: theme.bgAlt }}>
+   429→      <Butterflies count={3} /><QueenSparkles />
+   430→      <div className="max-w-6xl mx-auto relative z-10">
+   431→        <Reveal><div className="text-center mb-16">
+   432→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Author</p>
+   433→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About M\u00e9m\u00e8re</h2>
+   434→          <div className="w-20 h-1 rounded-full mx-auto" style={{ background: theme.accent }} />
+   435→        </div></Reveal>
+   436→
+   437→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-20">
+   438→          <Reveal>
+   439→            <div className="relative flex justify-center">
+   440→              <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full overflow-hidden shadow-2xl" style={{ border: `4px solid ${theme.card}` }}>
+   441→                <Image src="/author-image.png" alt="M\u00e9m\u00e8re \u2014 author of The Dancing Queen" fill className="object-cover" priority />
+   442→              </div>
+   443→              <div className="absolute inset-0 rounded-full animate-pulse-soft" style={{ border: `2px solid ${theme.accent}40`, transform:"scale(1.1)" }} aria-hidden="true" />
+   444→            </div>
+   445→          </Reveal>
+   446→          <Reveal delay={200}>
+   447→            <div>
+   448→              <blockquote className="text-2xl md:text-3xl font-medium italic leading-relaxed mb-8" style={{ color: theme.primary }}>
+   449→                &ldquo;For George and Myles, my grandsons, who fill my heart with feelings I&apos;ve never had to explore before.&rdquo;
+   450→              </blockquote>
+   451→              <hr className="mb-8" style={{ borderColor: theme.accent+"40" }} />
+   452→              <div className="space-y-5 leading-relaxed" style={{ color: theme.mutedFg }}>
+   453→                <p>Known to her grandsons as <strong style={{ color: theme.primary }}>M\u00e9m\u00e8re</strong> &mdash; the French word for grandmother &mdash; the author wrote <em>The Dancing Queen</em> as a bedtime gift for George and Myles, whom she affectionately calls &ldquo;Critter and Bug.&rdquo; What began as a personal lullaby grew into a story she wanted to share with every child who still looks for a little magic before saying good night.</p>
+   454→                <p>In her dedication, M\u00e9m\u00e8re writes about a love that has no words &mdash; the love for a mother and father, the love that completes your life, the love that explodes your heart when you hold your newborn child. But she reserves her most awe-filled words for grandchildren.</p>
+   455→                <p>This book is that feeling, distilled into verse and illustration &mdash; a grandmother&apos;s love letter to the wonder of childhood, and to the tiny guardians who watch over our children&apos;s dreams.</p>
+   456→              </div>
+   457→              <div className="mt-8">
+   458→                <p className="font-semibold text-lg" style={{ color: theme.primary }}>&ldquo;Love you to the moon and back&rdquo;</p>
+   459→                <p style={{ color: theme.accent }}>&mdash; M\u00e9m\u00e8re</p>
+   460→              </div>
+   461→            </div>
+   462→          </Reveal>
+   463→        </div>
+   464→
+   465→        {/* ─── Color Palette Journey ─── */}
+   466→        <Reveal delay={300}>
+   467→          <div>
+   468→            <h3 className="text-xl font-semibold mb-3 text-center" style={{ color: theme.primary }}>The Day-to-Night Color Journey</h3>
+   469→            <p className="text-center max-w-2xl mx-auto mb-8" style={{ color: theme.mutedFg }}>
+   470→              Click any color to transform the entire website into that moment of the story.
+   471→            </p>
+   472→            <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+   473→              {PALETTE.map(c => (
+   474→                <button key={c.key} onClick={() => setTheme(c.key)}
+   475→                  className="flex flex-col items-center gap-2 group cursor-pointer p-2 rounded-xl transition-all duration-300 hover:scale-110"
+   476→                  style={{ background: themeKey === c.key ? theme.primary+"20" : "transparent", outline: themeKey === c.key ? `2px solid ${theme.primary}` : "none" }}>
+   477→                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-full shadow-md transition-transform duration-300 group-hover:scale-110" style={{ background: c.color, border: `2px solid ${theme.border}` }} />
+   478→                  <span className="text-xs font-medium" style={{ color: theme.mutedFg }}>{c.label}</span>
+   479→                  <span className="text-[10px] uppercase tracking-wider" style={{ color: theme.accent }}>{c.phase}</span>
+   480→                </button>
+   481→              ))}
+   482→            </div>
+   483→          </div>
+   484→        </Reveal>
+   485→
+   486→        <Reveal delay={200}><div className="mt-12 text-center">
+   487→          <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }} onClick={() => navigate("author")}>
+   488→            Read More About M\u00e9m\u00e8re
+   489→          </Button>
+   490→        </div></Reveal>
+   491→      </div>
+   492→    </section>
+   493→  );
+   494→}
+   495→
+   496→/* ─── Home: Trailer Preview ─── */
+   497→function HomeTrailerSection() {
+   498→  const { theme, navigate } = useApp();
+   499→  return (
+   500→    <section className="py-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   501→      <Butterflies count={3} /><QueenSparkles />
+   502→      <div className="max-w-4xl mx-auto relative z-10">
+   503→        <Reveal><div className="text-center mb-12">
+   504→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Sneak Peek</p>
+   505→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Book Trailer</h2>
+   506→          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
+   507→          <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
+   508→            Watch the Dancing Queen come to life &mdash; from sunlit backyard dances to the quiet magic of a child&apos;s pillow at night.
+   509→          </p>
+   510→        </div></Reveal>
+   511→
+   512→        <Reveal delay={200}>
+   513→          <div className="relative rounded-2xl overflow-hidden shadow-2xl" style={{ border: `1px solid ${theme.border}` }}>
+   514→            <video controls preload="metadata" className="w-full aspect-video" style={{ background: theme.primary }} playsInline>
+   515→              <source src="/trailer.mp4" type="video/mp4" />
+   516→            </video>
+   517→          </div>
+   518→        </Reveal>
+   519→
+   520→        <Reveal delay={300}><p className="mt-10 text-center text-sm italic" style={{ color: theme.mutedFg }}>
+   521→          The trailer follows the book&apos;s day-to-night arc: sunlit backyard play gives way to lavender dusk, then deep plum nighttime warmth.
+   522→        </p></Reveal>
+   523→
+   524→        <Reveal delay={200}><div className="mt-12 text-center">
+   525→          <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }} onClick={() => navigate("trailer")}>
+   526→            Go to Trailer Page
+   527→          </Button>
+   528→        </div></Reveal>
+   529→      </div>
+   530→    </section>
+   531→  );
+   532→}
+   533→
+   534→/* ─── Home: CTA Section ─── */
+   535→function HomeCTASection() {
+   536→  const { theme, navigate } = useApp();
+   537→  return (
+   538→    <section className="py-24 px-6 relative overflow-hidden" style={{ background: theme.primary }}>
+   539→      <Butterflies count={5} /><StarField />
+   540→      <div className="max-w-3xl mx-auto text-center relative z-10">
+   541→        <Reveal>
+   542→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-4" style={{ color: theme.accent }}>Available Now</p>
+   543→          <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
+   544→            Every Child Deserves<br /><span style={{ color: theme.accent }}>a Little Magic</span>
+   545→          </h2>
+   546→          <p className="text-lg text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
+   547→            The Dancing Queen is more than a bedtime story &mdash; it is a grandmother&apos;s love letter to the wonder of childhood, and to the tiny guardians who watch over our children&apos;s dreams.
+   548→          </p>
+   549→          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+   550→            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("purchase")}>
+   551→              Get the Book
+   552→            </Button>
+   553→            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full border-2 hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("contact")}>
+   554→              Contact M\u00e9m\u00e8re
+   555→            </Button>
+   556→          </div>
+   557→          <p className="text-white/40 text-sm mt-12 italic">&ldquo;To Every Child who believes in tiny wonders&hellip;&rdquo;</p>
+   558→        </Reveal>
+   559→      </div>
+   560→    </section>
+   561→  );
+   562→}
+   563→
+   564→/* ─── Full Home Page ─── */
+   565→function HomePage() {
+   566→  return (
+   567→    <>
+   568→      <HeroSection />
+   569→      <HomeBookSection />
+   570→      <HomeAuthorSection />
+   571→      <HomeTrailerSection />
+   572→      <HomeCTASection />
+   573→    </>
+   574→  );
+   575→}
+   576→
+   577→/* ═══════════════════════════════════════════════════
+   578→   BOOK PAGE
+   579→   ═══════════════════════════════════════════════════ */
+   580→
+   581→function BookPage() {
+   582→  const { theme, navigate } = useApp();
+   583→  return (
+   584→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   585→      <Butterflies count={4} /><QueenSparkles />
+   586→      <div className="max-w-6xl mx-auto relative z-10">
+   587→        <Reveal><div className="text-center mb-16">
+   588→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Story</p>
+   589→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About the Book</h2>
+   590→          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
+   591→          <p className="text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
+   592→            The Dancing Queen invents a new piece of children&apos;s mythology &mdash; a tiny, light, fairy-like being with wings who lives in a child&apos;s hair. By day she plays in backyards; as evening falls, she tucks her wings in close and stands guard over their dreams.
+   593→          </p>
+   594→        </div></Reveal>
+   595→
+   596→        <Reveal delay={150}><div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+   597→          {VERSES.map(v => (
+   598→            <div key={v.label} className="rounded-2xl p-6 md:p-8 shadow-sm" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   599→              <p className="text-lg md:text-xl font-medium italic leading-relaxed" style={{ color: theme.primary }}>&ldquo;{v.text}&rdquo;</p>
+   600→              <p className="text-sm mt-3" style={{ color: theme.mutedFg }}>{v.label}</p>
+   601→            </div>
+   602→          ))}
+   603→        </div></Reveal>
+   604→
+   605→        <Divider />
+   606→
+   607→        <Reveal delay={200}><div className="text-center mt-10 mb-10">
+   608→          <h3 className="text-2xl md:text-3xl font-semibold mb-4" style={{ color: theme.primary }}>What Makes This Book Special</h3>
+   609→          <p className="max-w-xl mx-auto" style={{ color: theme.mutedFg }}>Every detail is crafted to create a bedtime experience children will ask for night after night.</p>
+   610→        </div></Reveal>
+   611→
+   612→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+   613→          {FEATURES.map((f, i) => (
+   614→            <Reveal key={f.title} delay={i*80}>
+   615→              <div className="rounded-2xl p-6 md:p-8 h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   616→                <span className="text-3xl mb-4 block">{f.icon}</span>
+   617→                <h4 className="text-lg font-semibold mb-3" style={{ color: theme.primary }}>{f.title}</h4>
+   618→                <p className="text-sm leading-relaxed" style={{ color: theme.mutedFg }}>{f.desc}</p>
+   619→              </div>
+   620→            </Reveal>
+   621→          ))}
+   622→        </div>
+   623→
+   624→        <Reveal delay={300}><div className="mt-16 rounded-2xl p-8 md:p-10" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   625→          <h3 className="text-xl font-semibold mb-6 text-center" style={{ color: theme.primary }}>Book Details</h3>
+   626→          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+   627→            {[{l:"Format",v:"Picture Book"},{l:"Pages",v:"32 pages"},{l:"Trim",v:'8.75" x 8.75"'},{l:"Ages",v:"2 \u2013 6"}].map(item => (
+   628→              <div key={item.l}>
+   629→                <p className="text-xs uppercase tracking-wider font-medium mb-1" style={{ color: theme.accent }}>{item.l}</p>
+   630→                <p className="text-lg font-semibold" style={{ color: theme.primary }}>{item.v}</p>
+   631→              </div>
+   632→            ))}
+   633→          </div>
+   634→        </div></Reveal>
+   635→      </div>
+   636→    </div>
+   637→  );
+   638→}
+   639→
+   640→/* ═══════════════════════════════════════════════════
+   641→   AUTHOR PAGE
+   642→   ═══════════════════════════════════════════════════ */
+   643→
+   644→function AuthorPage() {
+   645→  const { theme, themeKey, setTheme } = useApp();
+   646→
+   647→  return (
+   648→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   649→      <Butterflies count={3} /><QueenSparkles />
+   650→      <div className="max-w-6xl mx-auto relative z-10">
+   651→        <Reveal><div className="text-center mb-16">
+   652→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Author</p>
+   653→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About M\u00e9m\u00e8re</h2>
+   654→          <div className="w-20 h-1 rounded-full mx-auto" style={{ background: theme.accent }} />
+   655→        </div></Reveal>
+   656→
+   657→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-20">
+   658→          <Reveal>
+   659→            <div className="relative flex justify-center">
+   660→              <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full overflow-hidden shadow-2xl" style={{ border: `4px solid ${theme.card}` }}>
+   661→                <Image src="/author-image.png" alt="M\u00e9m\u00e8re \u2014 author of The Dancing Queen" fill className="object-cover" priority />
+   662→              </div>
+   663→              <div className="absolute inset-0 rounded-full animate-pulse-soft" style={{ border: `2px solid ${theme.accent}40`, transform:"scale(1.1)" }} aria-hidden="true" />
+   664→            </div>
+   665→          </Reveal>
+   666→          <Reveal delay={200}>
+   667→            <div>
+   668→              <blockquote className="text-2xl md:text-3xl font-medium italic leading-relaxed mb-8" style={{ color: theme.primary }}>
+   669→                &ldquo;For George and Myles, my grandsons, who fill my heart with feelings I&apos;ve never had to explore before.&rdquo;
+   670→              </blockquote>
+   671→              <hr className="mb-8" style={{ borderColor: theme.accent+"40" }} />
+   672→              <div className="space-y-5 leading-relaxed" style={{ color: theme.mutedFg }}>
+   673→                <p>Known to her grandsons as <strong style={{ color: theme.primary }}>M\u00e9m\u00e8re</strong> &mdash; the French word for grandmother &mdash; the author wrote <em>The Dancing Queen</em> as a bedtime gift for George and Myles, whom she affectionately calls &ldquo;Critter and Bug.&rdquo; What began as a personal lullaby grew into a story she wanted to share with every child who still looks for a little magic before saying good night.</p>
+   674→                <p>In her dedication, M\u00e9m\u00e8re writes about a love that has no words &mdash; the love for a mother and father, the love that completes your life, the love that explodes your heart when you hold your newborn child. But she reserves her most awe-filled words for grandchildren.</p>
+   675→                <p>This book is that feeling, distilled into verse and illustration &mdash; a grandmother&apos;s love letter to the wonder of childhood, and to the tiny guardians who watch over our children&apos;s dreams.</p>
+   676→              </div>
+   677→              <div className="mt-8">
+   678→                <p className="font-semibold text-lg" style={{ color: theme.primary }}>&ldquo;Love you to the moon and back&rdquo;</p>
+   679→                <p style={{ color: theme.accent }}>&mdash; M\u00e9m\u00e8re</p>
+   680→              </div>
+   681→            </div>
+   682→          </Reveal>
+   683→        </div>
+   684→
+   685→        {/* ─── Color Palette Journey ─── */}
+   686→        <Reveal delay={300}>
+   687→          <div>
+   688→            <h3 className="text-xl font-semibold mb-3 text-center" style={{ color: theme.primary }}>The Day-to-Night Color Journey</h3>
+   689→            <p className="text-center max-w-2xl mx-auto mb-8" style={{ color: theme.mutedFg }}>
+   690→              Click any color to transform the entire website into that moment of the story.
+   691→            </p>
+   692→            <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+   693→              {PALETTE.map(c => (
+   694→                <button key={c.key} onClick={() => setTheme(c.key)}
+   695→                  className="flex flex-col items-center gap-2 group cursor-pointer p-2 rounded-xl transition-all duration-300 hover:scale-110"
+   696→                  style={{ background: themeKey === c.key ? theme.primary+"20" : "transparent", outline: themeKey === c.key ? `2px solid ${theme.primary}` : "none" }}>
+   697→                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-full shadow-md transition-transform duration-300 group-hover:scale-110" style={{ background: c.color, border: `2px solid ${theme.border}` }} />
+   698→                  <span className="text-xs font-medium" style={{ color: theme.mutedFg }}>{c.label}</span>
+   699→                  <span className="text-[10px] uppercase tracking-wider" style={{ color: theme.accent }}>{c.phase}</span>
+   700→                </button>
+   701→              ))}
+   702→            </div>
+   703→          </div>
+   704→        </Reveal>
+   705→      </div>
+   706→    </div>
+   707→  );
+   708→}
+   709→
+   710→/* ═══════════════════════════════════════════════════
+   711→   TRAILER PAGE
+   712→   ═══════════════════════════════════════════════════ */
+   713→
+   714→function TrailerPage() {
+   715→  const { theme } = useApp();
+   716→  return (
+   717→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   718→      <Butterflies count={3} /><QueenSparkles />
+   719→      <div className="max-w-4xl mx-auto relative z-10">
+   720→        <Reveal><div className="text-center mb-12">
+   721→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Sneak Peek</p>
+   722→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Book Trailer</h2>
+   723→          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
+   724→          <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
+   725→            Watch the Dancing Queen come to life &mdash; from sunlit backyard dances to the quiet magic of a child&apos;s pillow at night.
+   726→          </p>
+   727→        </div></Reveal>
+   728→
+   729→        <Reveal delay={200}>
+   730→          <div className="relative rounded-2xl overflow-hidden shadow-2xl" style={{ border: `1px solid ${theme.border}` }}>
+   731→            <video controls preload="metadata" className="w-full aspect-video" style={{ background: theme.primary }} playsInline>
+   732→              <source src="/trailer.mp4" type="video/mp4" />
+   733→            </video>
+   734→          </div>
+   735→        </Reveal>
+   736→
+   737→        <Reveal delay={300}><p className="mt-10 text-center text-sm italic" style={{ color: theme.mutedFg }}>
+   738→          The trailer follows the book&apos;s day-to-night arc: sunlit backyard play gives way to lavender dusk, then deep plum nighttime warmth.
+   739→        </p></Reveal>
+   740→      </div>
+   741→    </div>
+   742→  );
+   743→}
+   744→
+   745→/* ═══════════════════════════════════════════════════
+   746→   CONTACT PAGE
+   747→   ═══════════════════════════════════════════════════ */
+   748→
+   749→function ContactPage() {
+   750→  const { theme } = useApp();
+   751→  const [sent, setSent] = useState(false);
+   752→  return (
+   753→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   754→      <Butterflies count={3} /><QueenSparkles />
+   755→      <div className="max-w-2xl mx-auto relative z-10">
+   756→        <Reveal><div className="text-center mb-12">
+   757→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Reach Out</p>
+   758→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Contact M\u00e9m\u00e8re</h2>
+   759→          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
+   760→          <p className="text-lg leading-relaxed" style={{ color: theme.mutedFg }}>
+   761→            For inquiries, press copies, or to share what The Dancing Queen means to your family.
+   762→          </p>
+   763→        </div></Reveal>
+   764→
+   765→        <Reveal delay={200}>
+   766→          <div className="rounded-2xl p-8 md:p-10 shadow-lg" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   767→            {sent ? (
+   768→              <div className="text-center py-12">
+   769→                <p className="text-4xl mb-4">\uD83D\uDC8C</p>
+   770→                <h3 className="text-2xl font-semibold mb-3" style={{ color: theme.primary }}>Message Sent!</h3>
+   771→                <p style={{ color: theme.mutedFg }}>Thank you for reaching out. M\u00e9m\u00e8re will treasure your words.</p>
+   772→              </div>
+   773→            ) : (
+   774→              <form onSubmit={e => { e.preventDefault(); setSent(true); }} className="space-y-6">
+   775→                <div>
+   776→                  <label className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Your Name</label>
+   777→                  <input type="text" required className="w-full px-4 py-3 rounded-xl text-base outline-none focus:ring-2" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="Enter your name" />
+   778→                </div>
+   779→                <div>
+   780→                  <label className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Email Address</label>
+   781→                  <input type="email" required className="w-full px-4 py-3 rounded-xl text-base outline-none focus:ring-2" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="you@example.com" />
+   782→                </div>
+   783→                <div>
+   784→                  <label className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Your Message</label>
+   785→                  <textarea required rows={5} className="w-full px-4 py-3 rounded-xl text-base outline-none focus:ring-2 resize-none" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="Share your thoughts..." />
+   786→                </div>
+   787→                <Button type="submit" size="lg" className="w-full font-semibold py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }}>
+   788→                  Send Message
+   789→                </Button>
+   790→              </form>
+   791→            )}
+   792→          </div>
+   793→        </Reveal>
+   794→      </div>
+   795→    </div>
+   796→  );
+   797→}
+   798→
+   799→/* ═══════════════════════════════════════════════════
+   800→   PURCHASE PAGE (Get the Book)
+   801→   ═══════════════════════════════════════════════════ */
+   802→
+   803→function PurchasePage() {
+   804→  const { theme, navigate } = useApp();
+   805→  return (
+   806→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden flex items-center justify-center" style={{ background: theme.primary }}>
+   807→      <Butterflies count={5} /><StarField />
+   808→      <div className="max-w-3xl mx-auto text-center relative z-10">
+   809→        <Reveal>
+   810→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-4" style={{ color: theme.accent }}>Available Now</p>
+   811→          <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
+   812→            Every Child Deserves<br /><span style={{ color: theme.accent }}>a Little Magic</span>
+   813→          </h2>
+   814→          <p className="text-lg text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
+   815→            The Dancing Queen is more than a bedtime story &mdash; it is a grandmother&apos;s love letter to the wonder of childhood, and to the tiny guardians who watch over our children&apos;s dreams.
+   816→          </p>
+   817→          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+   818→            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }}>
+   819→              Order Your Copy
+   820→            </Button>
+   821→            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full border-2 hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("contact")}>
+   822→              Contact M\u00e9m\u00e8re
+   823→            </Button>
+   824→          </div>
+   825→          <p className="text-white/40 text-sm mt-12 italic">&ldquo;To Every Child who believes in tiny wonders&hellip;&rdquo;</p>
+   826→        </Reveal>
+   827→      </div>
+   828→    </div>
+   829→  );
+   830→}
+   831→
+   832→/* ═══════════════════════════════════════════════════
+   833→   EXPERIENCE PAGE — Scroll-driven frame-by-frame story
+   834→   ═══════════════════════════════════════════════════ */
+   835→
+   836→interface StoryChapter {
+   837→  startFrame: number;
+   838→  endFrame: number;
+   839→  title: string;
+   840→  lines: string[];
+   841→  bgTint: string;
+   842→  textPosition: "center" | "left" | "right" | "bottom";
+   843→  textStyle: "dreamy" | "bold" | "whisper" | "cta";
+   844→}
+   845→
+   846→const STORY_CHAPTERS: StoryChapter[] = [
+   847→  {
+   848→    startFrame: 0, endFrame: 4,
+   849→    title: "",
+   850→    lines: [],
+   851→    bgTint: "rgba(200,180,216,0.15)",
+   852→    textPosition: "center",
+   853→    textStyle: "dreamy",
+   854→  },
+   855→  {
+   856→    startFrame: 4, endFrame: 9,
+   857→    title: "The Dancing Queen",
+   858→    lines: ["so light and fair"],
+   859→    bgTint: "rgba(155,122,138,0.2)",
+   860→    textPosition: "center",
+   861→    textStyle: "bold",
+   862→  },
+   863→  {
+   864→    startFrame: 9, endFrame: 19,
+   865→    title: "",
+   866→    lines: ["She dances for children everywhere"],
+   867→    bgTint: "rgba(107,123,58,0.08)",
+   868→    textPosition: "left",
+   869→    textStyle: "dreamy",
+   870→  },
+   871→  {
+   872→    startFrame: 19, endFrame: 29,
+   873→    title: "",
+   874→    lines: ["Every backyard", "hides a little magic"],
+   875→    bgTint: "rgba(107,90,74,0.1)",
+   876→    textPosition: "left",
+   877→    textStyle: "whisper",
+   878→  },
+   879→  {
+   880→    startFrame: 29, endFrame: 34,
+   881→    title: "",
+   882→    lines: [],
+   883→    bgTint: "rgba(74,42,74,0.15)",
+   884→    textPosition: "center",
+   885→    textStyle: "dreamy",
+   886→  },
+   887→  {
+   888→    startFrame: 34, endFrame: 44,
+   889→    title: "Can you spot her?",
+   890→    lines: ["She\u2019ll balance and bounce", "and swing on a curl"],
+   891→    bgTint: "rgba(107,58,107,0.12)",
+   892→    textPosition: "right",
+   893→    textStyle: "whisper",
+   894→  },
+   895→  {
+   896→    startFrame: 44, endFrame: 54,
+   897→    title: "Goodnight, little dreamers",
+   898→    lines: ["She prefers soft noises", "and the songs of the night"],
+   899→    bgTint: "rgba(74,42,74,0.25)",
+   900→    textPosition: "center",
+   901→    textStyle: "dreamy",
+   902→  },
+   903→  {
+   904→    startFrame: 54, endFrame: 64,
+   905→    title: "",
+   906→    lines: ["Your night dreams are special", "and guarded with care"],
+   907→    bgTint: "rgba(42,21,40,0.3)",
+   908→    textPosition: "center",
+   909→    textStyle: "dreamy",
+   910→  },
+   911→];
+   912→
+   913→const TOTAL_FRAMES = 65;
+   914→const SCROLL_PER_FRAME = 120; // px of scroll to advance one frame
+   915→
+   916→function getFramePath(idx: number): string {
+   917→  return `/frames/frame_${String(idx + 1).padStart(4, "0")}.jpg`;
+   918→}
+   919→
+   920→function ExperiencePage() {
+   921→  const { theme, navigate } = useApp();
+   922→  const rafRef = useRef<number>(0);
+   923→  const containerRef = useRef<HTMLDivElement>(null);
+   924→  const [frame, setFrame] = useState(0);
+   925→  const [chapterProgress, setChapterProgress] = useState(0); // 0-1 within current chapter
+   926→  const [activeChapter, setActiveChapter] = useState(0);
+   927→  const [showIntro, setShowIntro] = useState(true);
+   928→  const preloadRef = useRef<HTMLImageElement[]>([]);
+   929→
+   930→  // Preload nearby frames
+   931→  useEffect(() => {
+   932→    const range = 5;
+   933→    for (let i = Math.max(0, frame - range); i <= Math.min(TOTAL_FRAMES - 1, frame + range); i++) {
+   934→      if (!preloadRef.current[i]) {
+   935→        const img = new window.Image();
+   936→        img.src = getFramePath(i);
+   937→        preloadRef.current[i] = img;
+   938→      }
+   939→    }
+   940→  }, [frame]);
+   941→
+   942→  // Scroll → frame mapping (container-relative to avoid scroll position issues)
+   943→  useEffect(() => {
+   944→    const onScroll = () => {
+   945→      cancelAnimationFrame(rafRef.current);
+   946→      rafRef.current = requestAnimationFrame(() => {
+   947→        const el = containerRef.current;
+   948→        if (!el) return;
+   949→        // Use container's position relative to viewport for reliable frame calculation
+   950→        const rect = el.getBoundingClientRect();
+   951→        const scrollInContainer = Math.max(0, -rect.top);
+   952→        const idx = Math.min(TOTAL_FRAMES - 1, Math.max(0, Math.floor(scrollInContainer / SCROLL_PER_FRAME)));
+   953→        setFrame(idx);
+   954→
+   955→        // Find active chapter
+   956→        const ch = STORY_CHAPTERS.findIndex(c => idx >= c.startFrame && idx <= c.endFrame);
+   957→        if (ch !== -1) {
+   958→          const chapter = STORY_CHAPTERS[ch];
+   959→          const range = chapter.endFrame - chapter.startFrame;
+   960→          const progress = range > 0 ? (idx - chapter.startFrame) / range : 1;
+   961→          setActiveChapter(ch);
+   962→          setChapterProgress(progress);
+   963→        }
+   964→      });
+   965→    };
+   966→    window.addEventListener("scroll", onScroll, { passive: true });
+   967→    // Set initial frame
+   968→    onScroll();
+   969→    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(rafRef.current); };
+   970→  }, []);
+   971→
+   972→  const startExperience = useCallback(() => {
+   973→    setShowIntro(false);
+   974→    // Force scroll to top after intro dismisses
+   975→    requestAnimationFrame(() => {
+   976→      window.scrollTo(0, 0);
+   977→      setTimeout(() => window.scrollTo(0, 0), 50);
+   978→      setTimeout(() => window.scrollTo(0, 0), 200);
+   979→    });
+   980→  }, []);
+   981→
+   982→  const chapter = STORY_CHAPTERS[activeChapter];
+   983→
+   984→  // Text opacity: fade in during first 30% of chapter, full 30-70%, fade out 70-100%
+   985→  const textOpacity = chapterProgress < 0.3
+   986→    ? chapterProgress / 0.3
+   987→    : chapterProgress > 0.7
+   988→      ? (1 - chapterProgress) / 0.3
+   989→      : 1;
+   990→
+   991→  // Title slides up during first 40%
+   992→  const titleTranslateY = Math.max(0, (1 - Math.min(1, chapterProgress / 0.4)) * 40);
+   993→  const titleOpacity = Math.min(1, chapterProgress / 0.15) * (chapterProgress > 0.75 ? (1 - chapterProgress) / 0.25 : 1);
+   994→
+   995→  // Overall progress for the progress bar
+   996→  const overallProgress = frame / (TOTAL_FRAMES - 1);
+   997→
+   998→  return (
+   999→    <>
+  1000→      {/* Intro overlay */}
+  1001→      {showIntro && (
+  1002→        <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: "rgba(42,21,40,0.95)" }}>
+  1003→          <Butterflies count={6} /><StarField />
+  1004→          <div className="text-center relative z-10 px-6 animate-page-in">
+  1005→            <p className="text-sm tracking-[0.3em] uppercase mb-4" style={{ color: theme.accent }}>Scroll-Driven Story</p>
+  1006→            <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
+  1007→              Experience<br /><span style={{ color: theme.accent }}>the Book</span>
+  1008→            </h2>
+  1009→            <p className="text-lg text-white/70 max-w-md mx-auto mb-10 leading-relaxed">
+  1010→              Scroll gently to unfold the story of The Dancing Queen, frame by frame. Each scroll reveals a new moment.
+  1011→            </p>
+  1012→            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 animate-float" style={{ background: theme.accent, color: theme.accentFg }} onClick={startExperience}>
+  1013→              Begin the Journey
+  1014→            </Button>
+  1015→          </div>
+  1016→        </div>
+  1017→      )}
+  1018→
+  1019→      {/* Scroll container */}
+  1020→      <div ref={containerRef} style={{ height: `${TOTAL_FRAMES * SCROLL_PER_FRAME}px` }} className="relative">
+  1021→        {/* Sticky viewport */}
+  1022→        <div className="sticky top-0 h-screen w-full overflow-hidden">
+  1023→          {/* Current frame */}
+  1024→          <img
+  1025→            src={getFramePath(frame)}
+  1026→            alt=""
+  1027→            className="absolute inset-0 w-full h-full object-cover no-theme-transition"
+  1028→            style={{ transition: "opacity 0.08s ease" }}
+  1029→          />
+  1030→          {/* Next frame (for crossfade) */}
+  1031→          {frame < TOTAL_FRAMES - 1 && (
+  1032→            <img
+  1033→              src={getFramePath(frame + 1)}
+  1034→              alt=""
+  1035→              className="absolute inset-0 w-full h-full object-cover no-theme-transition"
+  1036→              style={{ opacity: (frame % 1) || 0 }}
+  1037→            />
+  1038→          )}
+  1039→
+  1040→          {/* Chapter color tint overlay */}
+  1041→          <div className="absolute inset-0 pointer-events-none no-theme-transition" style={{ background: chapter?.bgTint || "transparent", transition: "background 0.8s ease" }} />
+  1042→
+  1043→          {/* Vignette for depth */}
+  1044→          <div className="absolute inset-0 pointer-events-none no-theme-transition" style={{ background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.3) 100%)" }} />
+  1045→
+  1046→          {/* Story text overlay */}
+  1047→          {chapter && chapter.lines.length > 0 && (
+  1048→            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+  1049→              <div
+  1050→                className={`text-center px-8 max-w-3xl mx-auto ${
+  1051→                  chapter.textPosition === "left" ? "mr-auto ml-8 md:ml-16 text-left" :
+  1052→                  chapter.textPosition === "right" ? "ml-auto mr-8 md:mr-16 text-right" :
+  1053→                  chapter.textPosition === "bottom" ? "absolute bottom-24 left-0 right-0" : ""
+  1054→                }`}
+  1055→                style={{
+  1056→                  opacity: textOpacity,
+  1057→                  transform: `translateY(${titleTranslateY}px)`,
+  1058→                  transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+  1059→                }}
+  1060→              >
+  1061→                {chapter.title && (
+  1062→                  <h3
+  1063→                    className={`mb-4 ${
+  1064→                      chapter.textStyle === "bold" ? "text-4xl md:text-6xl font-bold" :
+  1065→                      chapter.textStyle === "whisper" ? "text-2xl md:text-3xl font-medium" :
+  1066→                      "text-3xl md:text-5xl font-semibold"
+  1067→                    }`}
+  1068→                    style={{
+  1069→                      color: "#FFFFFF",
+  1070→                      textShadow: "0 4px 30px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.5)",
+  1071→                      opacity: titleOpacity,
+  1072→                      transform: `translateY(${titleTranslateY}px)`,
+  1073→                      transition: "opacity 0.5s ease-out, transform 0.5s ease-out",
+  1074→                    }}
+  1075→                  >
+  1076→                    {chapter.title}
+  1077→                  </h3>
+  1078→                )}
+  1079→                {chapter.lines.map((line, i) => (
+  1080→                  <p
+  1081→                    key={`${activeChapter}-${i}`}
+  1082→                    className={`${
+  1083→                      chapter.textStyle === "whisper" ? "text-lg md:text-xl font-light italic" :
+  1084→                      chapter.textStyle === "bold" ? "text-xl md:text-2xl font-medium" :
+  1085→                      "text-lg md:text-2xl"
+  1086→                    } leading-relaxed`}
+  1087→                    style={{
+  1088→                      color: "rgba(255,255,255,0.9)",
+  1089→                      textShadow: "0 2px 20px rgba(0,0,0,0.7), 0 1px 6px rgba(0,0,0,0.4)",
+  1090→                      animationDelay: `${i * 200}ms`,
+  1091→                    }}
+  1092→                  >
+  1093→                    {line}
+  1094→                  </p>
+  1095→                ))}
+  1096→              </div>
+  1097→            </div>
+  1098→          )}
+  1099→
+  1100→          {/* Floating decorative elements */}
+  1101→          <div className="absolute inset-0 pointer-events-none z-5 no-theme-transition">
+  1102→            <Butterflies count={2} />
+  1103→          </div>
+  1104→
+  1105→          {/* Progress bar at bottom */}
+  1106→          <div className="absolute bottom-0 left-0 right-0 h-1 z-20 no-theme-transition" style={{ background: "rgba(255,255,255,0.1)" }}>
+  1107→            <div className="h-full no-theme-transition" style={{ width: `${overallProgress * 100}%`, background: theme.accent, transition: "width 0.15s ease-out" }} />
+  1108→          </div>
+  1109→
+  1110→          {/* Chapter indicator dots */}
+  1111→          <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-3 no-theme-transition">
+  1112→            {STORY_CHAPTERS.filter(c => c.title || c.lines.length > 0).map((ch, i) => {
+  1113→              const realIdx = STORY_CHAPTERS.indexOf(ch);
+  1114→              const isActive = realIdx === activeChapter;
+  1115→              const isPast = realIdx < activeChapter;
+  1116→              return (
+  1117→                <div
+  1118→                  key={realIdx}
+  1119→                  className="rounded-full transition-all duration-500"
+  1120→                  style={{
+  1121→                    width: isActive ? 10 : 6,
+  1122→                    height: isActive ? 10 : 6,
+  1123→                    background: isActive ? theme.accent : isPast ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)",
+  1124→                    boxShadow: isActive ? `0 0 12px ${theme.accent}80` : "none",
+  1125→                    transform: isActive ? "scale(1.2)" : "scale(1)",
+  1126→                  }}
+  1127→                />
+  1128→              );
+  1129→            })}
+  1130→          </div>
+  1131→
+  1132→          {/* Frame counter (subtle) */}
+  1133→          <div className="absolute top-20 left-6 z-20 no-theme-transition">
+  1134→            <p className="text-xs font-mono tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>
+  1135→              {String(frame + 1).padStart(2, "0")} / {String(TOTAL_FRAMES).padStart(2, "0")}
+  1136→            </p>
+  1137→          </div>
+  1138→
+  1139→          {/* Scroll hint (shows at start) */}
+  1140→          {frame < 3 && (
+  1141→            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 animate-float" style={{ opacity: Math.max(0, 1 - frame / 3) }}>
+  1142→              <div className="flex flex-col items-center gap-2">
+  1143→                <p className="text-xs tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.5)" }}>Scroll to unfold the story</p>
+  1144→                <svg className="w-5 h-5" style={{ color: "rgba(255,255,255,0.4)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+  1145→              </div>
+  1146→            </div>
+  1147→          )}
+  1148→
+  1149→          {/* CTA at end */}
+  1150→          {frame >= TOTAL_FRAMES - 4 && (
+  1151→            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 text-center" style={{ opacity: Math.min(1, (frame - (TOTAL_FRAMES - 4)) / 2), transition: "opacity 0.5s ease" }}>
+  1152→              <p className="text-sm tracking-[0.2em] uppercase mb-4" style={{ color: theme.accent, textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>The Story Awaits</p>
+  1153→              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+  1154→                <Button size="lg" className="font-semibold px-8 py-5 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("purchase")}>
+  1155→                  Get the Book
+  1156→                </Button>
+  1157→                <Button size="lg" className="font-semibold px-8 py-5 text-base rounded-full border-2 hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.3)", color: "#FFFFFF", background: "rgba(0,0,0,0.2)" }} onClick={() => navigate("home")}>
+  1158→                  Back to Home
+  1159→                </Button>
+  1160→              </div>
+  1161→            </div>
+  1162→          )}
+  1163→        </div>
+  1164→      </div>
+  1165→    </>
+  1166→  );
+  1167→}
+  1168→
+  1169→/* ═══════════════════════════════════════════════════
+  1170→   FOOTER
+  1171→   ═══════════════════════════════════════════════════ */
+  1172→
+  1173→function Footer() {
+  1174→  const { theme, navigate } = useApp();
+  1175→  const links: { label: string; href: PageId }[] = [
+  1176→    { label: "Home", href: "home" },
+  1177→    { label: "About the Book", href: "book" },
+  1178→    { label: "About M\u00e9m\u00e8re", href: "author" },
+  1179→    { label: "Book Trailer", href: "trailer" },
+  1180→  ];
+  1181→  return (
+  1182→    <footer style={{ background: theme.primary, color: theme.primaryFg }} className="py-12 px-6 no-theme-transition">
+  1183→      <div className="max-w-6xl mx-auto">
+  1184→        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+  1185→          <div>
+  1186→            <h4 className="font-semibold text-lg mb-3">The Dancing Queen</h4>
+  1187→            <p className="text-sm leading-relaxed opacity-70">A whimsical bedtime picture book by M\u00e9m\u00e8re. Dedicated to George and Myles &mdash; and to every child who still looks for a little magic before saying good night.</p>
+  1188→          </div>
+  1189→          <div>
+  1190→            <h4 className="font-semibold text-lg mb-3">Quick Links</h4>
+  1191→            <ul className="space-y-2 text-sm">
+  1192→              {links.map(l => <li key={l.href}><button onClick={() => navigate(l.href)} className="hover:opacity-100 opacity-70 transition-opacity duration-200">{l.label}</button></li>)}
+  1193→            </ul>
+  1194→          </div>
+  1195→          <div>
+  1196→            <h4 className="font-semibold text-lg mb-3">Connect</h4>
+  1197→            <p className="text-sm leading-relaxed mb-4 opacity-70">For inquiries, press copies, or to share what The Dancing Queen means to your family.</p>
+  1198→            <Button size="sm" className="rounded-full text-sm font-medium" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("contact")}>
+  1199→              Get in Touch
+  1200→            </Button>
+  1201→          </div>
+  1202→        </div>
+  1203→        <hr className="opacity-10 mb-6" />
+  1204→        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-xs opacity-40">
+  1205→          <p>&copy; {new Date().getFullYear()} The Dancing Queen. All Rights Reserved.</p>
+  1206→          <p>Written with love by <span style={{ color: theme.accent }}>M\u00e9m\u00e8re</span> for George and Myles</p>
+  1207→        </div>
+  1208→      </div>
+  1209→    </footer>
+  1210→  );
+  1211→}
+  1212→
+  1213→/* ═══════════════════════════════════════════════════
+  1214→   MAIN APP — SPA Router + Theme Provider
+  1215→   ═══════════════════════════════════════════════════ */
+  1216→
+  1217→export default function Home() {
+  1218→  const [page, setPage] = useState<PageId>("home");
+  1219→  const [themeKey, setThemeKey] = useState("plum");
+  1220→  const [transitioning, setTransitioning] = useState(false);
+  1221→  const theme = THEMES[themeKey];
+  1222→
+  1223→  // Apply theme to DOM
+  1224→  useEffect(() => { applyThemeToDOM(theme); }, [theme]);
+  1225→
+  1226→  const navigate = useCallback((p: PageId) => {
+  1227→    if (p === page || transitioning) return;
+  1228→    setTransitioning(true);
+  1229→    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  1230→    setTimeout(() => { setPage(p); setTimeout(() => setTransitioning(false), 50); }, 350);
+  1231→  }, [page, transitioning]);
+  1232→
+  1233→  const ctx = { theme, themeKey, setTheme: setThemeKey, navigate, page };
+  1234→
+  1235→  const pages: Record<PageId, React.ReactNode> = {
+  1236→    home: <HomePage />,
+  1237→    book: <BookPage />,
+  1238→    author: <AuthorPage />,
+  1239→    trailer: <TrailerPage />,
+  1240→    contact: <ContactPage />,
+  1241→    purchase: <PurchasePage />,
+  1242→    experience: <ExperiencePage />,
+  1243→  };
+  1244→
+  1245→  return (
+  1246→    <ThemeCtx.Provider value={ctx}>
+  1247→      <div className="min-h-screen flex flex-col" style={{ background: theme.bg }}>
+  1248→        {page !== "experience" && <Nav />}
+  1249→        <main className="flex-1" style={{ opacity: transitioning ? 0 : 1, transform: transitioning ? "translateY(16px)" : "translateY(0)", transition: "opacity 0.35s ease, transform 0.35s ease" }}>
+  1250→          {pages[page]}
+  1251→        </main>
+  1252→        {page !== "experience" && <Footer />}
+  1253→      </div>
+  1254→    </ThemeCtx.Provider>
+  1255→  );
+  1256→}

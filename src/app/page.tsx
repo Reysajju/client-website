@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
    TYPES & THEME DEFINITIONS
    ═══════════════════════════════════════════════════ */
 
-type PageId = "home" | "book" | "author" | "trailer" | "contact" | "purchase";
+type PageId = "home" | "book" | "author" | "trailer" | "contact" | "purchase" | "experience";
 
 interface ColorTheme {
   name: string;
@@ -111,10 +111,13 @@ function applyThemeToDOM(t: ColorTheme) {
    ═══════════════════════════════════════════════════ */
 
 function StarField() {
-  const stars = Array.from({ length: 18 }, (_, i) => ({
-    id: i, left: `${Math.random()*100}%`, top: `${Math.random()*100}%`,
-    delay: `${Math.random()*3}s`, size: Math.random()*3+2,
-  }));
+  const [stars, setStars] = useState<Array<{id:number;left:string;top:string;delay:string;size:number}>>([]);
+  useEffect(() => {
+    setStars(Array.from({ length: 18 }, (_, i) => ({
+      id: i, left: `${Math.random()*100}%`, top: `${Math.random()*100}%`,
+      delay: `${Math.random()*3}s`, size: Math.random()*3+2,
+    })));
+  }, []);
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       {stars.map(s => <div key={s.id} className="star" style={{ left:s.left, top:s.top, width:`${s.size}px`, height:`${s.size}px`, animationDelay:s.delay, background:"var(--accent,#D4A853)" }} />)}
@@ -150,10 +153,13 @@ function Butterflies({ count = 3 }: { count?: number }) {
 
 function QueenSparkles() {
   const { theme } = useApp();
-  const sparkles = Array.from({ length: 8 }, (_, i) => ({
-    id: i, left: `${10+Math.random()*80}%`, top: `${10+Math.random()*80}%`,
-    delay: `${Math.random()*3}s`, size: 4 + Math.random()*5,
-  }));
+  const [sparkles, setSparkles] = useState<Array<{id:number;left:string;top:string;delay:string;size:number}>>([]);
+  useEffect(() => {
+    setSparkles(Array.from({ length: 8 }, (_, i) => ({
+      id: i, left: `${10+Math.random()*80}%`, top: `${10+Math.random()*80}%`,
+      delay: `${Math.random()*3}s`, size: 4 + Math.random()*5,
+    })));
+  }, []);
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       {sparkles.map(s => <div key={s.id} className="queen-sparkle" style={{ left:s.left, top:s.top, width:`${s.size}px`, height:`${s.size}px`, animationDelay:s.delay, background: theme.accent }} />)}
@@ -323,6 +329,9 @@ function HeroSection() {
               </Button>
               <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full border-2 shadow-lg backdrop-blur-sm hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("trailer")}>
                 Watch the Trailer
+              </Button>
+              <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full border-2 shadow-lg backdrop-blur-sm hover:scale-105 transition-all duration-300" style={{ borderColor: theme.accent+"80", color: theme.accent, background: "rgba(0,0,0,0.15)" }} onClick={() => navigate("experience")}>
+                Experience the Book
               </Button>
             </div>
           </div>
@@ -821,6 +830,338 @@ function PurchasePage() {
 }
 
 /* ═══════════════════════════════════════════════════
+   EXPERIENCE PAGE — Scroll-driven frame-by-frame story
+   ═══════════════════════════════════════════════════ */
+
+interface StoryChapter {
+  startFrame: number;
+  endFrame: number;
+  title: string;
+  lines: string[];
+  bgTint: string;
+  textPosition: "center" | "left" | "right" | "bottom";
+  textStyle: "dreamy" | "bold" | "whisper" | "cta";
+}
+
+const STORY_CHAPTERS: StoryChapter[] = [
+  {
+    startFrame: 0, endFrame: 4,
+    title: "",
+    lines: [],
+    bgTint: "transparent",
+    textPosition: "center",
+    textStyle: "dreamy",
+  },
+  {
+    startFrame: 4, endFrame: 9,
+    title: "The Dancing Queen",
+    lines: ["so light and fair"],
+    bgTint: "transparent",
+    textPosition: "center",
+    textStyle: "bold",
+  },
+  {
+    startFrame: 9, endFrame: 19,
+    title: "",
+    lines: ["She dances for children everywhere"],
+    bgTint: "transparent",
+    textPosition: "left",
+    textStyle: "dreamy",
+  },
+  {
+    startFrame: 19, endFrame: 29,
+    title: "",
+    lines: ["Every backyard", "hides a little magic"],
+    bgTint: "transparent",
+    textPosition: "left",
+    textStyle: "whisper",
+  },
+  {
+    startFrame: 29, endFrame: 34,
+    title: "",
+    lines: [],
+    bgTint: "transparent",
+    textPosition: "center",
+    textStyle: "dreamy",
+  },
+  {
+    startFrame: 34, endFrame: 44,
+    title: "Can you spot her?",
+    lines: ["She\u2019ll balance and bounce", "and swing on a curl"],
+    bgTint: "transparent",
+    textPosition: "right",
+    textStyle: "whisper",
+  },
+  {
+    startFrame: 44, endFrame: 54,
+    title: "Goodnight, little dreamers",
+    lines: ["She prefers soft noises", "and the songs of the night"],
+    bgTint: "transparent",
+    textPosition: "center",
+    textStyle: "dreamy",
+  },
+  {
+    startFrame: 54, endFrame: 64,
+    title: "",
+    lines: ["Your night dreams are special", "and guarded with care"],
+    bgTint: "transparent",
+    textPosition: "center",
+    textStyle: "dreamy",
+  },
+];
+
+const TOTAL_FRAMES = 65;
+const SCROLL_PER_FRAME = 120; // px of scroll to advance one frame
+
+function getFramePath(idx: number): string {
+  return `/frames/frame_${String(idx + 1).padStart(4, "0")}.jpg`;
+}
+
+function ExperiencePage() {
+  const { theme, navigate } = useApp();
+  const rafRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [frame, setFrame] = useState(0);
+  const [chapterProgress, setChapterProgress] = useState(0); // 0-1 within current chapter
+  const [activeChapter, setActiveChapter] = useState(0);
+  const [showIntro, setShowIntro] = useState(true);
+  const preloadRef = useRef<HTMLImageElement[]>([]);
+
+  // Force body background to black to prevent theme color bleed
+  useEffect(() => {
+    const prev = document.body.style.background;
+    document.body.style.background = "#000";
+    document.body.classList.add("no-theme-transition");
+    return () => {
+      document.body.style.background = prev;
+      document.body.classList.remove("no-theme-transition");
+    };
+  }, []);
+
+  // Preload nearby frames
+  useEffect(() => {
+    const range = 5;
+    for (let i = Math.max(0, frame - range); i <= Math.min(TOTAL_FRAMES - 1, frame + range); i++) {
+      if (!preloadRef.current[i]) {
+        const img = new window.Image();
+        img.src = getFramePath(i);
+        preloadRef.current[i] = img;
+      }
+    }
+  }, [frame]);
+
+  // Scroll → frame mapping (container-relative to avoid scroll position issues)
+  useEffect(() => {
+    const onScroll = () => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        // Use container's position relative to viewport for reliable frame calculation
+        const rect = el.getBoundingClientRect();
+        const scrollInContainer = Math.max(0, -rect.top);
+        const idx = Math.min(TOTAL_FRAMES - 1, Math.max(0, Math.floor(scrollInContainer / SCROLL_PER_FRAME)));
+        setFrame(idx);
+
+        // Find active chapter
+        const ch = STORY_CHAPTERS.findIndex(c => idx >= c.startFrame && idx <= c.endFrame);
+        if (ch !== -1) {
+          const chapter = STORY_CHAPTERS[ch];
+          const range = chapter.endFrame - chapter.startFrame;
+          const progress = range > 0 ? (idx - chapter.startFrame) / range : 1;
+          setActiveChapter(ch);
+          setChapterProgress(progress);
+        }
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    // Set initial frame
+    onScroll();
+    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(rafRef.current); };
+  }, []);
+
+  const startExperience = useCallback(() => {
+    setShowIntro(false);
+    // Force scroll to top after intro dismisses
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      setTimeout(() => window.scrollTo(0, 0), 50);
+      setTimeout(() => window.scrollTo(0, 0), 200);
+    });
+  }, []);
+
+  const chapter = STORY_CHAPTERS[activeChapter];
+
+  // Text opacity: fade in during first 30% of chapter, full 30-70%, fade out 70-100%
+  const textOpacity = chapterProgress < 0.3
+    ? chapterProgress / 0.3
+    : chapterProgress > 0.7
+      ? (1 - chapterProgress) / 0.3
+      : 1;
+
+  // Title slides up during first 40%
+  const titleTranslateY = Math.max(0, (1 - Math.min(1, chapterProgress / 0.4)) * 40);
+  const titleOpacity = Math.min(1, chapterProgress / 0.15) * (chapterProgress > 0.75 ? (1 - chapterProgress) / 0.25 : 1);
+
+  // Overall progress for the progress bar
+  const overallProgress = frame / (TOTAL_FRAMES - 1);
+
+  return (
+    <>
+      {/* Intro overlay */}
+      {showIntro && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: "rgba(10,8,12,0.95)" }}>
+          <Butterflies count={6} /><StarField />
+          <div className="text-center relative z-10 px-6 animate-page-in">
+            <p className="text-sm tracking-[0.3em] uppercase mb-4" style={{ color: theme.accent }}>Scroll-Driven Story</p>
+            <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
+              Experience<br /><span style={{ color: theme.accent }}>the Book</span>
+            </h2>
+            <p className="text-lg text-white/70 max-w-md mx-auto mb-10 leading-relaxed">
+              Scroll gently to unfold the story of The Dancing Queen, frame by frame. Each scroll reveals a new moment.
+            </p>
+            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 animate-float" style={{ background: theme.accent, color: theme.accentFg }} onClick={startExperience}>
+              Begin the Journey
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Scroll container — black bg prevents theme color bleed */}
+      <div ref={containerRef} style={{ height: `${TOTAL_FRAMES * SCROLL_PER_FRAME}px`, background: "#000" }} className="relative no-theme-transition">
+        {/* Sticky viewport */}
+        <div className="sticky top-0 h-screen w-full overflow-hidden">
+          {/* Current frame */}
+          <img
+            src={getFramePath(frame)}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover no-theme-transition"
+          />
+
+          {/* Story text overlay */}
+          {chapter && chapter.lines.length > 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div
+                className={`text-center px-8 max-w-3xl mx-auto ${
+                  chapter.textPosition === "left" ? "mr-auto ml-8 md:ml-16 text-left" :
+                  chapter.textPosition === "right" ? "ml-auto mr-8 md:mr-16 text-right" :
+                  chapter.textPosition === "bottom" ? "absolute bottom-24 left-0 right-0" : ""
+                }`}
+                style={{
+                  opacity: textOpacity,
+                  transform: `translateY(${titleTranslateY}px)`,
+                  transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+                }}
+              >
+                {chapter.title && (
+                  <h3
+                    className={`mb-4 ${
+                      chapter.textStyle === "bold" ? "text-4xl md:text-6xl font-bold" :
+                      chapter.textStyle === "whisper" ? "text-2xl md:text-3xl font-medium" :
+                      "text-3xl md:text-5xl font-semibold"
+                    }`}
+                    style={{
+                      color: "#FFFFFF",
+                      textShadow: "0 4px 30px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.5)",
+                      opacity: titleOpacity,
+                      transform: `translateY(${titleTranslateY}px)`,
+                      transition: "opacity 0.5s ease-out, transform 0.5s ease-out",
+                    }}
+                  >
+                    {chapter.title}
+                  </h3>
+                )}
+                {chapter.lines.map((line, i) => (
+                  <p
+                    key={`${activeChapter}-${i}`}
+                    className={`${
+                      chapter.textStyle === "whisper" ? "text-lg md:text-xl font-light italic" :
+                      chapter.textStyle === "bold" ? "text-xl md:text-2xl font-medium" :
+                      "text-lg md:text-2xl"
+                    } leading-relaxed`}
+                    style={{
+                      color: "rgba(255,255,255,0.9)",
+                      textShadow: "0 2px 20px rgba(0,0,0,0.7), 0 1px 6px rgba(0,0,0,0.4)",
+                      animationDelay: `${i * 200}ms`,
+                    }}
+                  >
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Floating decorative elements */}
+          <div className="absolute inset-0 pointer-events-none z-5 no-theme-transition">
+            <Butterflies count={2} />
+          </div>
+
+          {/* Progress bar at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 h-1 z-20 no-theme-transition" style={{ background: "rgba(255,255,255,0.1)" }}>
+            <div className="h-full no-theme-transition" style={{ width: `${overallProgress * 100}%`, background: theme.accent, transition: "width 0.15s ease-out" }} />
+          </div>
+
+          {/* Chapter indicator dots */}
+          <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-3 no-theme-transition">
+            {STORY_CHAPTERS.filter(c => c.title || c.lines.length > 0).map((ch, i) => {
+              const realIdx = STORY_CHAPTERS.indexOf(ch);
+              const isActive = realIdx === activeChapter;
+              const isPast = realIdx < activeChapter;
+              return (
+                <div
+                  key={realIdx}
+                  className="rounded-full transition-all duration-500"
+                  style={{
+                    width: isActive ? 10 : 6,
+                    height: isActive ? 10 : 6,
+                    background: isActive ? theme.accent : isPast ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)",
+                    boxShadow: isActive ? `0 0 12px ${theme.accent}80` : "none",
+                    transform: isActive ? "scale(1.2)" : "scale(1)",
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Frame counter (subtle) */}
+          <div className="absolute top-20 left-6 z-20 no-theme-transition">
+            <p className="text-xs font-mono tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>
+              {String(frame + 1).padStart(2, "0")} / {String(TOTAL_FRAMES).padStart(2, "0")}
+            </p>
+          </div>
+
+          {/* Scroll hint (shows at start) */}
+          {frame < 3 && (
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 animate-float" style={{ opacity: Math.max(0, 1 - frame / 3) }}>
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-xs tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.5)" }}>Scroll to unfold the story</p>
+                <svg className="w-5 h-5" style={{ color: "rgba(255,255,255,0.4)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+              </div>
+            </div>
+          )}
+
+          {/* CTA at end */}
+          {frame >= TOTAL_FRAMES - 4 && (
+            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 text-center" style={{ opacity: Math.min(1, (frame - (TOTAL_FRAMES - 4)) / 2), transition: "opacity 0.5s ease" }}>
+              <p className="text-sm tracking-[0.2em] uppercase mb-4" style={{ color: theme.accent, textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>The Story Awaits</p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button size="lg" className="font-semibold px-8 py-5 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("purchase")}>
+                  Get the Book
+                </Button>
+                <Button size="lg" className="font-semibold px-8 py-5 text-base rounded-full border-2 hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.3)", color: "#FFFFFF", background: "rgba(0,0,0,0.2)" }} onClick={() => navigate("home")}>
+                  Back to Home
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
    FOOTER
    ═══════════════════════════════════════════════════ */
 
@@ -893,16 +1234,17 @@ export default function Home() {
     trailer: <TrailerPage />,
     contact: <ContactPage />,
     purchase: <PurchasePage />,
+    experience: <ExperiencePage />,
   };
 
   return (
     <ThemeCtx.Provider value={ctx}>
-      <div className="min-h-screen flex flex-col" style={{ background: theme.bg }}>
-        <Nav />
-        <main className="flex-1" style={{ opacity: transitioning ? 0 : 1, transform: transitioning ? "translateY(16px)" : "translateY(0)", transition: "opacity 0.35s ease, transform 0.35s ease" }}>
+      <div className="min-h-screen flex flex-col" style={{ background: page === "experience" ? "#000" : theme.bg }}>
+        {page !== "experience" && <Nav />}
+        <main className="flex-1" style={{ opacity: transitioning ? 0 : 1, transform: transitioning ? "translateY(16px)" : "translateY(0)", transition: "opacity 0.35s ease, transform 0.35s ease", background: page === "experience" ? "#000" : "transparent" }}>
           {pages[page]}
         </main>
-        <Footer />
+        {page !== "experience" && <Footer />}
       </div>
     </ThemeCtx.Provider>
   );
