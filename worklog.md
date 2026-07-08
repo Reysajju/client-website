@@ -44,3 +44,31 @@ Summary:
 
 Build: PASSED (0 errors)
 
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix Experience page darkness and add full responsiveness
+
+Work Log:
+- Analyzed user screenshot — Experience page was near-black because frame images weren't loading on live deployment
+- Root cause: Intro overlay used near-black background; scroll container/body/root all forced to #000
+- Verified frame artwork is bright pastel — issue was frames not loading, not dark artwork
+- Rewrote intro overlay to use theme-colored gradient (no frame image dependency)
+- Added frameImgError state with onError handler — beautiful gradient fallback when frames fail
+- Removed all forced black backgrounds — experience page now uses theme colors as fallback
+- Added ExperienceNav — minimal floating nav for experience page
+- Added mobile detection for responsive scroll speed (80px vs 120px per frame)
+- Made all sticky viewports use h-[100dvh] for proper mobile viewport
+- Updated all inner pages with proper mobile nav clearance (pt-16 sm:pt-20 md:pt-24)
+- Enhanced mobile nav menu with Contact and Get the Book links
+- Improved hero video: object-position, wider overlay, responsive h1 leading
+- Added per-page OG tags, Twitter cards, theme-color meta via usePageSEO
+- Added viewport meta with viewport-fit=cover and maximum-scale=5
+
+Stage Summary:
+- Experience page visible and beautiful even when frame images fail to load
+- Intro overlay uses theme gradient — always colorful and inviting
+- Full fallback mode shows story text with theme gradient background
+- All pages responsive from 320px mobile to 4K desktop
+- SEO: per-page OG tags, Twitter cards, theme-color meta, JSON-LD structured data
