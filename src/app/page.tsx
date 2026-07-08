@@ -935,7 +935,7 @@ interface StoryChapter {
   title: string;
   lines: string[];
   bgTint: string;
-  textPosition: "center" | "left" | "right" | "bottom";
+  textPosition: "center" | "left" | "right" | "bottom" | "top" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
   textStyle: "dreamy" | "bold" | "whisper" | "cta";
 }
 
@@ -953,7 +953,7 @@ const STORY_CHAPTERS: StoryChapter[] = [
     title: "The Dancing Queen",
     lines: ["so light and fair"],
     bgTint: "transparent",
-    textPosition: "center",
+    textPosition: "top",
     textStyle: "bold",
   },
   {
@@ -961,7 +961,7 @@ const STORY_CHAPTERS: StoryChapter[] = [
     title: "",
     lines: ["She dances for children everywhere"],
     bgTint: "transparent",
-    textPosition: "left",
+    textPosition: "bottom-left",
     textStyle: "dreamy",
   },
   {
@@ -969,7 +969,7 @@ const STORY_CHAPTERS: StoryChapter[] = [
     title: "",
     lines: ["Every backyard", "hides a little magic"],
     bgTint: "transparent",
-    textPosition: "left",
+    textPosition: "top-right",
     textStyle: "whisper",
   },
   {
@@ -985,7 +985,7 @@ const STORY_CHAPTERS: StoryChapter[] = [
     title: "Can you spot her?",
     lines: ["She\u2019ll balance and bounce", "and swing on a curl"],
     bgTint: "transparent",
-    textPosition: "right",
+    textPosition: "bottom-right",
     textStyle: "whisper",
   },
   {
@@ -993,7 +993,7 @@ const STORY_CHAPTERS: StoryChapter[] = [
     title: "Goodnight, little dreamers",
     lines: ["She prefers soft noises", "and the songs of the night"],
     bgTint: "transparent",
-    textPosition: "center",
+    textPosition: "bottom",
     textStyle: "dreamy",
   },
   {
@@ -1001,7 +1001,7 @@ const STORY_CHAPTERS: StoryChapter[] = [
     title: "",
     lines: ["Your night dreams are special", "and guarded with care"],
     bgTint: "transparent",
-    textPosition: "center",
+    textPosition: "top-left",
     textStyle: "dreamy",
   },
 ];
@@ -1017,12 +1017,13 @@ function ExperiencePage() {
   const { theme, navigate } = useApp();
   const rafRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [frame, setFrame] = useState(0);
   const [chapterProgress, setChapterProgress] = useState(0); // 0-1 within current chapter
   const [activeChapter, setActiveChapter] = useState(0);
   const [showIntro, setShowIntro] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const preloadRef = useRef<HTMLImageElement[]>([]);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
   // Detect mobile for responsive scroll speed
   useEffect(() => {
@@ -1037,7 +1038,6 @@ function ExperiencePage() {
   const [frameImgError, setFrameImgError] = useState(false);
 
   // Track if we're on experience page for body style
-  // (no longer forcing black body — fallback mode uses theme colors)
   useEffect(() => {
     document.body.classList.add("no-theme-transition");
     return () => {
@@ -1045,51 +1045,45 @@ function ExperiencePage() {
     };
   }, []);
 
-  // Preload nearby frames
-  useEffect(() => {
-    const range = 5;
-    for (let i = Math.max(0, frame - range); i <= Math.min(TOTAL_FRAMES - 1, frame + range); i++) {
-      if (!preloadRef.current[i]) {
-        const img = new window.Image();
-        img.src = getFramePath(i);
-        preloadRef.current[i] = img;
-      }
-    }
-  }, [frame]);
-
-  // Scroll → frame mapping (container-relative to avoid scroll position issues)
+  // Scroll → frame mapping and video scrubbing
   useEffect(() => {
     const onScroll = () => {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
         const el = containerRef.current;
         if (!el) return;
-        // Use container's position relative to viewport for reliable frame calculation
+        
         const rect = el.getBoundingClientRect();
         const scrollInContainer = Math.max(0, -rect.top);
+        
+        const maxScroll = (TOTAL_FRAMES - 1) * scrollPx;
+        const progress = Math.min(1, Math.max(0, scrollInContainer / maxScroll));
+        
         const idx = Math.min(TOTAL_FRAMES - 1, Math.max(0, Math.floor(scrollInContainer / scrollPx)));
         setFrame(idx);
+
+        if (videoRef.current && videoRef.current.duration) {
+          videoRef.current.currentTime = progress * videoRef.current.duration;
+        }
 
         // Find active chapter
         const ch = STORY_CHAPTERS.findIndex(c => idx >= c.startFrame && idx <= c.endFrame);
         if (ch !== -1) {
           const chapter = STORY_CHAPTERS[ch];
           const range = chapter.endFrame - chapter.startFrame;
-          const progress = range > 0 ? (idx - chapter.startFrame) / range : 1;
+          const cProgress = range > 0 ? (idx - chapter.startFrame) / range : 1;
           setActiveChapter(ch);
-          setChapterProgress(progress);
+          setChapterProgress(cProgress);
         }
       });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
-    // Set initial frame
     onScroll();
     return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(rafRef.current); };
-  }, []);
+  }, [scrollPx]);
 
   const startExperience = useCallback(() => {
     setShowIntro(false);
-    // Force scroll to top after intro dismisses
     requestAnimationFrame(() => {
       window.scrollTo(0, 0);
       setTimeout(() => window.scrollTo(0, 0), 50);
@@ -1115,7 +1109,7 @@ function ExperiencePage() {
 
   return (
     <>
-      {/* Intro overlay — beautiful gradient, NO dependency on frame images */}
+      {/* Intro overlay */}
       {showIntro && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center no-theme-transition overflow-hidden" style={{ background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primary}CC 40%, ${theme.bg} 100%)` }}>
           <div className="absolute inset-0 no-theme-transition" style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.15) 0%, transparent 60%)" }} />
@@ -1126,7 +1120,7 @@ function ExperiencePage() {
               Experience<br /><span style={{ color: theme.accent, textShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>the Book</span>
             </h2>
             <p className="text-sm sm:text-base md:text-lg text-white/85 max-w-md mx-auto mb-8 sm:mb-10 leading-relaxed">
-              Scroll gently to unfold the story of The Dancing Queen, frame by frame. Each scroll reveals a new moment.
+              Scroll gently to unfold the story of The Dancing Queen, driven by a beautifully dynamic video experience.
             </p>
             <Button size="lg" className="font-semibold px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 animate-float" style={{ background: theme.accent, color: theme.accentFg }} onClick={startExperience}>
               Begin the Journey
@@ -1136,90 +1130,96 @@ function ExperiencePage() {
       )}
 
       {/* Scroll container */}
-      <div ref={containerRef} style={{ height: `${TOTAL_FRAMES * scrollPx}px`, background: frameImgError ? theme.primary : "#111" }} className="relative no-theme-transition">
+      <div ref={containerRef} style={{ height: `${TOTAL_FRAMES * scrollPx}px`, background: frameImgError ? theme.primary : "#000" }} className="relative no-theme-transition">
         {/* Sticky viewport */}
-        <div className="sticky top-0 h-[100dvh] w-full overflow-hidden group" style={{ background: frameImgError ? theme.primary : "#111" }}>
-          {/* Fallback gradient background visible when frames don't load */}
+        <div className="sticky top-0 h-[100dvh] w-full overflow-hidden group" style={{ background: frameImgError ? theme.primary : "#000" }}>
+          
+          {/* Fallback gradient background */}
           {frameImgError && (
             <div className="absolute inset-0 no-theme-transition" style={{ background: `linear-gradient(160deg, ${theme.primary} 0%, ${theme.bgAlt || theme.primary}CC 50%, ${theme.bg} 100%)` }}>
               <Butterflies count={3} /><StarField />
               <div className="absolute inset-0 flex items-center justify-center px-6">
                 <div className="text-center max-w-2xl">
                   <p className="text-xs tracking-[0.3em] uppercase mb-4" style={{ color: theme.accent }}>Frame {frame + 1} of {TOTAL_FRAMES}</p>
-                  {chapter && (chapter.title || chapter.lines.length > 0) && (
-                    <>
-                      {chapter.title && <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4" style={{ textShadow: "0 2px 20px rgba(0,0,0,0.3)" }}>{chapter.title}</h3>}
-                      {chapter.lines.map((line, i) => (
-                        <p key={`${activeChapter}-${i}`} className="text-lg sm:text-xl md:text-2xl text-white/90 mb-2 leading-relaxed" style={{ opacity: textOpacity }}>{line}</p>
-                      ))}
-                    </>
-                  )}
                   <p className="text-sm text-white/50 mt-6 italic">Scroll to continue the story...</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Current frame image */}
+          {/* Dynamic Video Element */}
           {!frameImgError && (
-            <img
-              src={getFramePath(frame)}
-              alt={chapter?.title ? `The Dancing Queen — ${chapter.title}` : "The Dancing Queen — story illustration"}
+            <video
+              ref={videoRef}
+              src="/trailer.mp4"
               className="absolute inset-0 w-full h-full object-cover no-theme-transition"
-              style={{ filter: "brightness(1.1) contrast(1.05) saturate(1.15)" }}
+              playsInline
+              muted
+              preload="auto"
+              onLoadedMetadata={() => setVideoLoaded(true)}
               onError={() => setFrameImgError(true)}
             />
           )}
 
-          {/* Story text overlay (only when frames are loading) */}
+          {/* Story text overlay */}
           {!frameImgError && chapter && chapter.lines.length > 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="absolute inset-0 pointer-events-none z-10">
               <div
-                className={`text-center px-6 sm:px-8 max-w-3xl mx-auto ${
-                  chapter.textPosition === "left" ? "mr-auto ml-6 sm:ml-12 md:ml-16 text-left" :
-                  chapter.textPosition === "right" ? "ml-auto mr-6 sm:mr-12 md:mr-16 text-right" :
-                  chapter.textPosition === "bottom" ? "absolute bottom-20 sm:bottom-24 left-0 right-0" : ""
+                className={`absolute px-6 sm:px-8 w-full max-w-xl ${
+                  chapter.textPosition === "center" ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center" :
+                  chapter.textPosition === "top" ? "top-24 sm:top-32 left-1/2 -translate-x-1/2 text-center" :
+                  chapter.textPosition === "bottom" ? "bottom-24 sm:bottom-32 left-1/2 -translate-x-1/2 text-center" :
+                  chapter.textPosition === "left" ? "top-1/2 left-6 sm:left-16 -translate-y-1/2 text-left" :
+                  chapter.textPosition === "right" ? "top-1/2 right-6 sm:right-16 -translate-y-1/2 text-right" :
+                  chapter.textPosition === "top-left" ? "top-24 sm:top-32 left-6 sm:left-16 text-left" :
+                  chapter.textPosition === "top-right" ? "top-24 sm:top-32 right-6 sm:right-16 text-right" :
+                  chapter.textPosition === "bottom-left" ? "bottom-24 sm:bottom-32 left-6 sm:left-16 text-left" :
+                  chapter.textPosition === "bottom-right" ? "bottom-24 sm:bottom-32 right-6 sm:right-16 text-right" :
+                  ""
                 }`}
-                style={{
-                  opacity: textOpacity,
-                  transform: `translateY(${titleTranslateY}px)`,
-                  transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
-                }}
               >
-                {chapter.title && (
-                  <h3
-                    className={`mb-3 sm:mb-4 ${
-                      chapter.textStyle === "bold" ? "text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold" :
-                      chapter.textStyle === "whisper" ? "text-xl sm:text-2xl md:text-3xl font-medium" :
-                      "text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold"
-                    }`}
-                    style={{
-                      color: "#FFFFFF",
-                      textShadow: "0 3px 24px rgba(0,0,0,0.7), 0 1px 8px rgba(0,0,0,0.4)",
-                      opacity: titleOpacity,
-                      transform: `translateY(${titleTranslateY}px)`,
-                      transition: "opacity 0.5s ease-out, transform 0.5s ease-out",
-                    }}
-                  >
-                    {chapter.title}
-                  </h3>
-                )}
-                {chapter.lines.map((line, i) => (
-                  <p
-                    key={`${activeChapter}-${i}`}
-                    className={`${
-                      chapter.textStyle === "whisper" ? "text-base sm:text-lg md:text-xl font-light italic" :
-                      chapter.textStyle === "bold" ? "text-lg sm:text-xl md:text-2xl font-medium" :
-                      "text-base sm:text-lg md:text-xl lg:text-2xl"
-                    } leading-relaxed`}
-                    style={{
-                      color: "rgba(255,255,255,0.92)",
-                      textShadow: "0 2px 16px rgba(0,0,0,0.6), 0 1px 4px rgba(0,0,0,0.3)",
-                    }}
-                  >
-                    {line}
-                  </p>
-                ))}
+                <div
+                  style={{
+                    opacity: textOpacity,
+                    transform: `translateY(${titleTranslateY}px)`,
+                    transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+                  }}
+                >
+                  {chapter.title && (
+                    <h3
+                      className={`mb-3 sm:mb-4 ${
+                        chapter.textStyle === "bold" ? "text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold" :
+                        chapter.textStyle === "whisper" ? "text-xl sm:text-2xl md:text-3xl font-medium" :
+                        "text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold"
+                      }`}
+                      style={{
+                        color: "#FFFFFF",
+                        textShadow: "0 3px 24px rgba(0,0,0,0.8), 0 1px 8px rgba(0,0,0,0.6)",
+                        opacity: titleOpacity,
+                        transform: `translateY(${titleTranslateY * 0.5}px)`,
+                        transition: "opacity 0.5s ease-out, transform 0.5s ease-out",
+                      }}
+                    >
+                      {chapter.title}
+                    </h3>
+                  )}
+                  {chapter.lines.map((line, i) => (
+                    <p
+                      key={`${activeChapter}-${i}`}
+                      className={`${
+                        chapter.textStyle === "whisper" ? "text-base sm:text-lg md:text-xl font-light italic" :
+                        chapter.textStyle === "bold" ? "text-lg sm:text-xl md:text-2xl font-medium" :
+                        "text-base sm:text-lg md:text-xl lg:text-2xl"
+                      } leading-relaxed`}
+                      style={{
+                        color: "rgba(255,255,255,0.95)",
+                        textShadow: "0 2px 16px rgba(0,0,0,0.8), 0 1px 6px rgba(0,0,0,0.5)",
+                      }}
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -1234,7 +1234,7 @@ function ExperiencePage() {
             <div className="h-full no-theme-transition" style={{ width: `${overallProgress * 100}%`, background: theme.accent, transition: "width 0.15s ease-out" }} />
           </div>
 
-          {/* Back button — always visible on mobile, on hover on desktop */}
+          {/* Back button */}
           <button
             onClick={() => navigate("home")}
             className="absolute top-16 sm:top-20 left-3 sm:left-6 z-20 flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2.5 rounded-full backdrop-blur-md border transition-all duration-300 hover:scale-105 md:opacity-0 md:group-hover:opacity-100 no-theme-transition"
@@ -1245,7 +1245,7 @@ function ExperiencePage() {
             <span className="text-xs sm:text-sm font-medium hidden sm:inline">Back</span>
           </button>
 
-          {/* Chapter indicator dots — smaller on mobile */}
+          {/* Chapter indicator dots */}
           <div className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 sm:gap-3 no-theme-transition">
             {STORY_CHAPTERS.filter(c => c.title || c.lines.length > 0).map((ch) => {
               const realIdx = STORY_CHAPTERS.indexOf(ch);
@@ -1267,14 +1267,14 @@ function ExperiencePage() {
             })}
           </div>
 
-          {/* Frame counter (subtle, hidden on very small screens) */}
+          {/* Frame counter */}
           <div className="absolute top-16 sm:top-20 right-16 sm:right-20 z-20 no-theme-transition hidden sm:block">
             <p className="text-xs font-mono tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>
               {String(frame + 1).padStart(2, "0")} / {String(TOTAL_FRAMES).padStart(2, "0")}
             </p>
           </div>
 
-          {/* Scroll hint (shows at start) */}
+          {/* Scroll hint */}
           {frame < 3 && (
             <div className="absolute bottom-8 sm:bottom-10 left-1/2 -translate-x-1/2 z-20 animate-float" style={{ opacity: Math.max(0, 1 - frame / 3) }}>
               <div className="flex flex-col items-center gap-2">
