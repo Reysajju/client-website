@@ -1,0 +1,677 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useRef, useState, useCallback, createContext, useContext } from "react";
+     4→import Image from "next/image";
+     5→import { Button } from "@/components/ui/button";
+     6→
+     7→/* ═══════════════════════════════════════════════════
+     8→   TYPES & THEME DEFINITIONS
+     9→   ═══════════════════════════════════════════════════ */
+    10→
+    11→type PageId = "home" | "book" | "author" | "trailer" | "contact" | "purchase";
+    12→
+    13→interface ColorTheme {
+    14→  name: string;
+    15→  bg: string; bgAlt: string; fg: string;
+    16→  primary: string; primaryFg: string;
+    17→  secondary: string; secondaryFg: string;
+    18→  accent: string; accentFg: string;
+    19→  card: string; cardFg: string;
+    20→  muted: string; mutedFg: string;
+    21→  border: string;
+    22→  heroOverlay: string;
+    23→}
+    24→
+    25→const THEMES: Record<string, ColorTheme> = {
+    26→  cream:       { name:"Cream",       bg:"#FFF8F0",bgAlt:"#FFF0E0",fg:"#5A4A3A",primary:"#B8862D",primaryFg:"#FFF",secondary:"#F5E6D8",secondaryFg:"#8A6A4A",accent:"#D4A853",accentFg:"#3A2818",card:"#FFFFFF",cardFg:"#5A4A3A",muted:"#F0E4D4",mutedFg:"#9A8A7A",border:"#E0D0C0",heroOverlay:"rgba(90,74,58,0.25)" },
+    27→  blush:       { name:"Blush",       bg:"#FFF0EE",bgAlt:"#FFE4E0",fg:"#6A3A3A",primary:"#B85050",primaryFg:"#FFF",secondary:"#FFE4E0",secondaryFg:"#A06060",accent:"#E8845A",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#6A3A3A",muted:"#F5DDDD",mutedFg:"#A08080",border:"#F0CCCC",heroOverlay:"rgba(106,58,58,0.25)" },
+    28→  olive:       { name:"Olive",       bg:"#F2F5E8",bgAlt:"#E8EDD8",fg:"#3A4A2A",primary:"#4E6828",primaryFg:"#FFF",secondary:"#E8EDD8",secondaryFg:"#5A7030",accent:"#8BA050",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#3A4A2A",muted:"#E0E8D0",mutedFg:"#7A8A6A",border:"#CDDCB8",heroOverlay:"rgba(58,74,42,0.25)" },
+    29→  gold:        { name:"Gold",        bg:"#FFF8E8",bgAlt:"#FFF0D0",fg:"#5A4A2A",primary:"#B89020",primaryFg:"#FFF",secondary:"#FFF0D0",secondaryFg:"#A08030",accent:"#D4A853",accentFg:"#3A2818",card:"#FFFFFF",cardFg:"#5A4A2A",muted:"#F0E8C8",mutedFg:"#9A8A5A",border:"#E0D4A0",heroOverlay:"rgba(90,74,42,0.25)" },
+    30→  "warm-brown":{ name:"Warm Brown",  bg:"#F5EDE0",bgAlt:"#EBE0D0",fg:"#4A3A2A",primary:"#6A4A2A",primaryFg:"#FFF",secondary:"#EBE0D0",secondaryFg:"#7A5A3A",accent:"#A08060",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#4A3A2A",muted:"#E4D8C8",mutedFg:"#8A7A6A",border:"#D4C4A8",heroOverlay:"rgba(74,58,42,0.25)" },
+    31→  lavender:    { name:"Lavender",    bg:"#F5F0FF",bgAlt:"#ECE4FF",fg:"#4A3A5A",primary:"#7A5AA0",primaryFg:"#FFF",secondary:"#ECE4FF",secondaryFg:"#8A6AAA",accent:"#B090D0",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#4A3A5A",muted:"#E4D8F0",mutedFg:"#8A7A9A",border:"#D0C0E8",heroOverlay:"rgba(74,58,90,0.25)" },
+    32→  mauve:       { name:"Mauve",       bg:"#F8F0F5",bgAlt:"#F0E4ED",fg:"#5A3A4A",primary:"#8A5070",primaryFg:"#FFF",secondary:"#F0E4ED",secondaryFg:"#9A6080",accent:"#C090A8",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#5A3A4A",muted:"#ECDDE4",mutedFg:"#9A8090",border:"#DCC0D0",heroOverlay:"rgba(90,58,74,0.25)" },
+    33→  plum:        { name:"Plum",        bg:"#F5E8F5",bgAlt:"#EBD8EB",fg:"#4A2A4A",primary:"#6A2A6A",primaryFg:"#FFF",secondary:"#EBD8EB",secondaryFg:"#7A3A7A",accent:"#A060A0",accentFg:"#FFF",card:"#FFFFFF",cardFg:"#4A2A4A",muted:"#E4D0E4",mutedFg:"#8A6A8A",border:"#D0B0D0",heroOverlay:"rgba(74,42,74,0.25)" },
+    34→  "deep-plum": { name:"Deep Plum",   bg:"#2A1528",bgAlt:"#351D33",fg:"#E8D8E8",primary:"#C8A0C8",primaryFg:"#2A1528",secondary:"#3A2038",secondaryFg:"#D0B8D0",accent:"#D4A853",accentFg:"#1A0A18",card:"#3A2038",cardFg:"#E8D8E8",muted:"#32202F",mutedFg:"#9A7A9A",border:"#4A2848",heroOverlay:"rgba(42,21,40,0.4)" },
+    35→};
+    36→
+    37→const PALETTE = [
+    38→  { key:"cream",      color:"#FFF8F0", label:"Cream",     phase:"Morning" },
+    39→  { key:"blush",      color:"#F5E6D8", label:"Blush",     phase:"Opening" },
+    40→  { key:"olive",      color:"#6B7B3A", label:"Olive",     phase:"Daytime" },
+    41→  { key:"gold",       color:"#D4A853", label:"Gold",      phase:"Midday" },
+    42→  { key:"warm-brown", color:"#8B6B4A", label:"Warm Brown",phase:"Afternoon"},
+    43→  { key:"lavender",   color:"#C8B4D8", label:"Lavender",  phase:"Dusk" },
+    44→  { key:"mauve",      color:"#9B7A8A", label:"Mauve",     phase:"Twilight" },
+    45→  { key:"plum",       color:"#6B3A6B", label:"Plum",      phase:"Night" },
+    46→  { key:"deep-plum",  color:"#4A2848", label:"Deep Plum", phase:"Dreams" },
+    47→];
+    48→
+    49→/* ═══════════════════════════════════════════════════
+    50→   THEME CONTEXT
+    51→   ═══════════════════════════════════════════════════ */
+    52→
+    53→interface ThemeCtxValue {
+    54→  theme: ColorTheme;
+    55→  themeKey: string;
+    56→  setTheme: (key: string) => void;
+    57→  navigate: (p: PageId) => void;
+    58→  page: PageId;
+    59→}
+    60→
+    61→const ThemeCtx = createContext<ThemeCtxValue>({
+    62→  theme: THEMES.plum,
+    63→  themeKey: "plum",
+    64→  setTheme: () => {},
+    65→  navigate: () => {},
+    66→  page: "home",
+    67→});
+    68→
+    69→function useApp() { return useContext(ThemeCtx); }
+    70→
+    71→function applyThemeToDOM(t: ColorTheme) {
+    72→  const r = document.documentElement.style;
+    73→  r.setProperty("--background", t.bg);
+    74→  r.setProperty("--foreground", t.fg);
+    75→  r.setProperty("--primary", t.primary);
+    76→  r.setProperty("--primary-foreground", t.primaryFg);
+    77→  r.setProperty("--secondary", t.secondary);
+    78→  r.setProperty("--secondary-foreground", t.secondaryFg);
+    79→  r.setProperty("--accent", t.accent);
+    80→  r.setProperty("--accent-foreground", t.accentFg);
+    81→  r.setProperty("--card", t.card);
+    82→  r.setProperty("--card-foreground", t.cardFg);
+    83→  r.setProperty("--muted", t.muted);
+    84→  r.setProperty("--muted-foreground", t.mutedFg);
+    85→  r.setProperty("--border", t.border);
+    86→  r.setProperty("--ring", t.accent);
+    87→}
+    88→
+    89→/* ═══════════════════════════════════════════════════
+    90→   DECORATIVE COMPONENTS
+    91→   ═══════════════════════════════════════════════════ */
+    92→
+    93→function StarField() {
+    94→  const stars = Array.from({ length: 18 }, (_, i) => ({
+    95→    id: i, left: `${Math.random()*100}%`, top: `${Math.random()*100}%`,
+    96→    delay: `${Math.random()*3}s`, size: Math.random()*3+2,
+    97→  }));
+    98→  return (
+    99→    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+   100→      {stars.map(s => <div key={s.id} className="star" style={{ left:s.left, top:s.top, width:`${s.size}px`, height:`${s.size}px`, animationDelay:s.delay, background:"var(--accent,#D4A853)" }} />)}
+   101→    </div>
+   102→  );
+   103→}
+   104→
+   105→function Butterflies({ count = 3 }: { count?: number }) {
+   106→  const { theme } = useApp();
+   107→  const paths = ["path-1","path-2","path-3"];
+   108→  const positions = [
+   109→    { top:"12%", left:"8%" },
+   110→    { top:"55%", left:"78%" },
+   111→    { top:"30%", left:"65%" },
+   112→    { top:"70%", left:"20%" },
+   113→    { top:"18%", left:"85%" },
+   114→  ];
+   115→  const bColor = theme.accent;
+   116→  return (
+   117→    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+   118→      {Array.from({ length: count }).map((_, i) => (
+   119→        <div key={i} className={`butterfly-wrap ${paths[i % 3]}`} style={{ ...positions[i % 5], animationDelay: `${i*2}s` }}>
+   120→          <div className="butterfly">
+   121→            <div className="butterfly-wing left" style={{ background: bColor }} />
+   122→            <div className="butterfly-body" style={{ background: bColor }} />
+   123→            <div className="butterfly-wing right" style={{ background: bColor }} />
+   124→          </div>
+   125→        </div>
+   126→      ))}
+   127→    </div>
+   128→  );
+   129→}
+   130→
+   131→function QueenSparkles() {
+   132→  const { theme } = useApp();
+   133→  const sparkles = Array.from({ length: 8 }, (_, i) => ({
+   134→    id: i, left: `${10+Math.random()*80}%`, top: `${10+Math.random()*80}%`,
+   135→    delay: `${Math.random()*3}s`, size: 4 + Math.random()*5,
+   136→  }));
+   137→  return (
+   138→    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+   139→      {sparkles.map(s => <div key={s.id} className="queen-sparkle" style={{ left:s.left, top:s.top, width:`${s.size}px`, height:`${s.size}px`, animationDelay:s.delay, background: theme.accent }} />)}
+   140→      <div className="queen-crown" style={{ top:"8%", right:"12%", background: theme.accent, animationDelay:"0s" }} />
+   141→      <div className="queen-crown" style={{ bottom:"15%", left:"8%", background: theme.primary, animationDelay:"3s", width:"14px", height:"10px" }} />
+   142→    </div>
+   143→  );
+   144→}
+   145→
+   146→/* ─── Scroll-reveal ─── */
+   147→function useReveal() {
+   148→  const ref = useRef<HTMLDivElement>(null);
+   149→  const [visible, setVisible] = useState(false);
+   150→  useEffect(() => {
+   151→    const el = ref.current; if (!el) return;
+   152→    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.unobserve(el); } }, { threshold: 0.1 });
+   153→    obs.observe(el);
+   154→    return () => obs.disconnect();
+   155→  }, []);
+   156→  return { ref, visible };
+   157→}
+   158→
+   159→function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+   160→  const { ref, visible } = useReveal();
+   161→  return <div ref={ref} className={`reveal ${visible?"visible":""} ${className}`} style={{ transitionDelay:`${delay}ms` }}>{children}</div>;
+   162→}
+   163→
+   164→function Divider() {
+   165→  return <div className="whimsical-divider" aria-hidden="true"><span style={{ color:"var(--accent,#D4A853)" }} className="text-xl">&#10022;</span></div>;
+   166→}
+   167→
+   168→/* ═══════════════════════════════════════════════════
+   169→   NAVIGATION
+   170→   ═══════════════════════════════════════════════════ */
+   171→
+   172→function Nav() {
+   173→  const { page, navigate, theme } = useApp();
+   174→  const [mobileOpen, setMobileOpen] = useState(false);
+   175→  const links: { label: string; href: PageId }[] = [
+   176→    { label: "Home", href: "home" },
+   177→    { label: "The Book", href: "book" },
+   178→    { label: "About Mémère", href: "author" },
+   179→    { label: "Trailer", href: "trailer" },
+   180→  ];
+   181→
+   182→  const go = useCallback((p: PageId) => { navigate(p); setMobileOpen(false); }, [navigate]);
+   183→
+   184→  return (
+   185→    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-md shadow-sm" style={{ borderColor: theme.border }}>
+   186→      <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
+   187→        <button onClick={() => go("home")} className="text-lg font-semibold tracking-wide" style={{ color: theme.primary }}>
+   188→          The Dancing Queen
+   189→        </button>
+   190→        <div className="hidden md:flex items-center gap-8">
+   191→          {links.map(l => (
+   192→            <button key={l.href} onClick={() => go(l.href)}
+   193→              className={`text-sm font-medium transition-colors duration-300 ${page===l.href ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
+   194→              style={{ color: theme.primary }}>
+   195→              {l.label}
+   196→            </button>
+   197→          ))}
+   198→        </div>
+   199→        <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
+   200→          <span className={`block w-6 h-0.5 transition-all duration-300 ${mobileOpen?"rotate-45 translate-y-2":""}`} style={{background:theme.primary}} />
+   201→          <span className={`block w-6 h-0.5 transition-all duration-300 ${mobileOpen?"opacity-0":""}`} style={{background:theme.primary}} />
+   202→          <span className={`block w-6 h-0.5 transition-all duration-300 ${mobileOpen?"-rotate-45 -translate-y-2":""}`} style={{background:theme.primary}} />
+   203→        </button>
+   204→      </div>
+   205→      {mobileOpen && (
+   206→        <div className="md:hidden shadow-lg" style={{ background: theme.card, borderTop: `1px solid ${theme.border}` }}>
+   207→          <div className="flex flex-col px-6 py-4 gap-3">
+   208→            {links.map(l => (
+   209→              <button key={l.href} onClick={() => go(l.href)} className="text-left py-2 font-medium transition-colors" style={{ color: theme.primary }}>
+   210→                {l.label}
+   211→              </button>
+   212→            ))}
+   213→          </div>
+   214→        </div>
+   215→      )}
+   216→    </nav>
+   217→  );
+   218→}
+   219→
+   220→/* ═══════════════════════════════════════════════════
+   221→   HOME PAGE — Video hero, text appears on scroll
+   222→   ═══════════════════════════════════════════════════ */
+   223→
+   224→function HomePage() {
+   225→  const { theme, navigate } = useApp();
+   226→  const sectionRef = useRef<HTMLDivElement>(null);
+   227→  const videoRef = useRef<HTMLVideoElement>(null);
+   228→  const rafRef = useRef<number>(0);
+   229→  const [scrollProg, setScrollProg] = useState(0);
+   230→  const [isMuted, setIsMuted] = useState(false);
+   231→
+   232→  useEffect(() => {
+   233→    const v = videoRef.current; if (!v) return;
+   234→    v.muted = false; v.volume = 1;
+   235→    v.play().catch(() => {
+   236→      v.muted = true; setIsMuted(true);
+   237→      const unmute = () => { v.muted = false; v.volume = 1; setIsMuted(false); document.removeEventListener("click",unmute); document.removeEventListener("touchstart",unmute); };
+   238→      document.addEventListener("click", unmute, { once: true });
+   239→      document.addEventListener("touchstart", unmute, { once: true });
+   240→    });
+   241→  }, []);
+   242→
+   243→  useEffect(() => {
+   244→    const v = videoRef.current; const s = sectionRef.current; if (!v || !s) return;
+   245→    const onScroll = () => {
+   246→      cancelAnimationFrame(rafRef.current);
+   247→      rafRef.current = requestAnimationFrame(() => {
+   248→        const rect = s.getBoundingClientRect();
+   249→        const prog = Math.max(0, Math.min(1, -rect.top / (window.innerHeight * 0.35)));
+   250→        setScrollProg(prog);
+   251→        const fadeProg = Math.max(0, Math.min(1, -rect.bottom / rect.height));
+   252→        v.volume = Math.max(0, 1 - fadeProg);
+   253→        if (v.volume < 0.01) v.muted = true;
+   254→        else if (!isMuted) v.muted = false;
+   255→      });
+   256→    };
+   257→    window.addEventListener("scroll", onScroll, { passive: true });
+   258→    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(rafRef.current); };
+   259→  }, [isMuted]);
+   260→
+   261→  const toggleMute = useCallback(() => {
+   262→    const v = videoRef.current; if (!v) return;
+   263→    v.muted = !v.muted; setIsMuted(v.muted); if (!v.muted) v.volume = 1;
+   264→  }, []);
+   265→
+   266→  const opacity = Math.min(1, scrollProg * 2.5);
+   267→  const translateY = (1 - Math.min(1, scrollProg * 2.5)) * 50;
+   268→
+   269→  return (
+   270→    <div ref={sectionRef} className="relative" style={{ minHeight: "180vh" }}>
+   271→      {/* Sticky video viewport */}
+   272→      <div className="sticky top-0 h-screen overflow-hidden">
+   273→        <video ref={videoRef} src="/trailer.mp4" autoPlay loop muted={false} playsInline className="absolute inset-0 w-full h-full object-cover no-theme-transition" />
+   274→        {/* Strong center overlay to block all video text */}
+   275→        <div className="absolute inset-0 z-[1] pointer-events-none" style={{ background: `radial-gradient(ellipse 75% 65% at 50% 45%, ${theme.heroOverlay.replace(/[\d.]+\)$/, "0.92)")}, ${theme.heroOverlay.replace(/[\d.]+\)$/, "0.60)")} 50%, transparent 88%)` }} />
+   276→
+   277→        <StarField />
+   278→
+   279→        {/* Scroll-revealed text */}
+   280→        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+   281→          <div className="text-center px-6 max-w-4xl mx-auto pointer-events-auto" style={{ opacity, transform: `translateY(${translateY}px)`, transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}>
+   282→            <p className="text-sm md:text-base tracking-[0.3em] uppercase mb-5" style={{ color: theme.accent, textShadow: "0 2px 16px rgba(0,0,0,0.7)" }}>
+   283→              A Bedtime Story by Mémère
+   284→            </p>
+   285→            <h1 className="text-5xl sm:text-6xl md:text-8xl font-bold text-white leading-tight mb-6" style={{ textShadow: "0 4px 30px rgba(0,0,0,0.85), 0 2px 10px rgba(0,0,0,0.6)" }}>
+   286→              The Dancing<br /><span style={{ color: theme.accent, textShadow: "0 4px 30px rgba(0,0,0,0.7)" }}>Queen</span>
+   287→            </h1>
+   288→            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-10" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.75)" }}>
+   289→              So light and fair, she dances for children everywhere.
+   290→              <br /><span className="text-white/70 text-base">A whimsical tale of a tiny winged guardian who watches over every child&apos;s dreams.</span>
+   291→            </p>
+   292→            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+   293→              <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("book")}>
+   294→                Discover the Story
+   295→              </Button>
+   296→              <Button size="lg" className="font-semibold px-8 py-6 text-base rounded-full border-2 shadow-lg backdrop-blur-sm hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("trailer")}>
+   297→                Watch the Trailer
+   298→              </Button>
+   299→            </div>
+   300→          </div>
+   301→        </div>
+   302→
+   303→        {/* Mute button */}
+   304→        <button onClick={toggleMute} aria-label={isMuted?"Unmute video":"Mute video"} className="absolute bottom-8 right-8 z-20 w-11 h-11 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/25 hover:scale-110 transition-all duration-300 no-theme-transition">
+   305→          {isMuted ? (
+   306→            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+   307→          ) : (
+   308→            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+   309→          )}
+   310→        </button>
+   311→
+   312→        {/* Scroll hint */}
+   313→        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-float" style={{ opacity: Math.max(0, 1 - scrollProg * 3) }}>
+   314→          <svg className="w-6 h-6 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+   315→        </div>
+   316→      </div>
+   317→    </div>
+   318→  );
+   319→}
+   320→
+   321→/* ═══════════════════════════════════════════════════
+   322→   BOOK PAGE
+   323→   ═══════════════════════════════════════════════════ */
+   324→
+   325→function BookPage() {
+   326→  const { theme } = useApp();
+   327→  const verses = [
+   328→    { text:"The Dancing Queen, so light and Fair, dances for children everywhere.", label:"Opening lines" },
+   329→    { text:"She'll balance and bounce and swing on a curl, or slide down on a long straight pony tailed girl.", label:"The playful spirit" },
+   330→    { text:"She prefers soft noises and the songs of the night.", label:"As evening falls" },
+   331→    { text:"Your night dreams are special and guarded with care.", label:"Her promise" },
+   332→  ];
+   333→  const features = [
+   334→    { icon:"🌙", title:"Bedtime Ritual", desc:"The story mirrors a real bedtime routine — from daytime energy and play through a gentle dusk transition to a calm, safe nighttime resolution. Each reading becomes part of a child's own winding-down ritual, helping ease the shift from busy day to peaceful sleep." },
+   335→    { icon:"🧚", title:"Guardian Fairy Mythology", desc:"The Dancing Queen introduces an entirely new piece of children's mythology — a tiny, winged, fairy-like being who lives in a child's hair, dances on curls and ponytails, and stands watch over their pillow as they sleep. She is the child's own personal guardian of dreams." },
+   336→    { icon:"🎨", title:"A Day-to-Night Color Journey", desc:"The illustrations carry the reader through a breathtaking visual arc: warm cream and blush tones give way to bright forest greens and golden hues for backyard play, then gradually crossfade into lavender and deep plum as night falls — the art itself tells the story." },
+   337→    { icon:"📖", title:"Rhyming Verse, Read Aloud", desc:"Written in a light, musical rhyming style meant to be read aloud by a parent or grandparent at bedtime. The verse has a natural, bouncing rhythm that holds the attention of young listeners while carrying them gently toward sleep." },
+   338→    { icon:"👶", title:"Ages 2 to 6", desc:"Designed for the youngest readers and listeners — children aged roughly two to six who still look for a little magic before saying good night. The simple, repeating rhythms and warm, reassuring message make it perfect for the bedtime crowd." },
+   339→    { icon:"💝", title:"A Grandmother's Gift", desc:"Written by Mémère and dedicated to her grandsons George and Myles, whom she lovingly calls \"Critter and Bug.\" The book closes with a dedication \"To Every Child\" who believes in tiny wonders, extending this grandmother's love to families everywhere." },
+   340→  ];
+   341→
+   342→  return (
+   343→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   344→      <Butterflies count={4} /><QueenSparkles />
+   345→      <div className="max-w-6xl mx-auto relative z-10">
+   346→        <Reveal><div className="text-center mb-16">
+   347→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Story</p>
+   348→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About the Book</h2>
+   349→          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
+   350→          <p className="text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
+   351→            The Dancing Queen invents a new piece of children&apos;s mythology — a tiny, light, fairy-like being with wings who lives in a child&apos;s hair. By day she plays in backyards; as evening falls, she tucks her wings in close and stands guard over their dreams.
+   352→          </p>
+   353→        </div></Reveal>
+   354→
+   355→        <Reveal delay={150}><div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+   356→          {verses.map(v => (
+   357→            <div key={v.label} className="rounded-2xl p-6 md:p-8 shadow-sm" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   358→              <p className="text-lg md:text-xl font-medium italic leading-relaxed" style={{ color: theme.primary }}>&ldquo;{v.text}&rdquo;</p>
+   359→              <p className="text-sm mt-3" style={{ color: theme.mutedFg }}>{v.label}</p>
+   360→            </div>
+   361→          ))}
+   362→        </div></Reveal>
+   363→
+   364→        <Divider />
+   365→
+   366→        <Reveal delay={200}><div className="text-center mt-10 mb-10">
+   367→          <h3 className="text-2xl md:text-3xl font-semibold mb-4" style={{ color: theme.primary }}>What Makes This Book Special</h3>
+   368→          <p className="max-w-xl mx-auto" style={{ color: theme.mutedFg }}>Every detail is crafted to create a bedtime experience children will ask for night after night.</p>
+   369→        </div></Reveal>
+   370→
+   371→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+   372→          {features.map((f, i) => (
+   373→            <Reveal key={f.title} delay={i*80}>
+   374→              <div className="rounded-2xl p-6 md:p-8 h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   375→                <span className="text-3xl mb-4 block">{f.icon}</span>
+   376→                <h4 className="text-lg font-semibold mb-3" style={{ color: theme.primary }}>{f.title}</h4>
+   377→                <p className="text-sm leading-relaxed" style={{ color: theme.mutedFg }}>{f.desc}</p>
+   378→              </div>
+   379→            </Reveal>
+   380→          ))}
+   381→        </div>
+   382→
+   383→        <Reveal delay={300}><div className="mt-16 rounded-2xl p-8 md:p-10" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   384→          <h3 className="text-xl font-semibold mb-6 text-center" style={{ color: theme.primary }}>Book Details</h3>
+   385→          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+   386→            {[{l:"Format",v:"Picture Book"},{l:"Pages",v:"32 pages"},{l:"Trim",v:'8.75" x 8.75"'},{l:"Ages",v:"2 – 6"}].map(item => (
+   387→              <div key={item.l}>
+   388→                <p className="text-xs uppercase tracking-wider font-medium mb-1" style={{ color: theme.accent }}>{item.l}</p>
+   389→                <p className="text-lg font-semibold" style={{ color: theme.primary }}>{item.v}</p>
+   390→              </div>
+   391→            ))}
+   392→          </div>
+   393→        </div></Reveal>
+   394→      </div>
+   395→    </div>
+   396→  );
+   397→}
+   398→
+   399→/* ═══════════════════════════════════════════════════
+   400→   AUTHOR PAGE
+   401→   ═══════════════════════════════════════════════════ */
+   402→
+   403→function AuthorPage() {
+   404→  const { theme, themeKey, setTheme } = useApp();
+   405→
+   406→  return (
+   407→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   408→      <Butterflies count={3} /><QueenSparkles />
+   409→      <div className="max-w-6xl mx-auto relative z-10">
+   410→        <Reveal><div className="text-center mb-16">
+   411→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>The Author</p>
+   412→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>About Mémère</h2>
+   413→          <div className="w-20 h-1 rounded-full mx-auto" style={{ background: theme.accent }} />
+   414→        </div></Reveal>
+   415→
+   416→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-20">
+   417→          <Reveal>
+   418→            <div className="relative flex justify-center">
+   419→              <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full overflow-hidden shadow-2xl" style={{ border: `4px solid ${theme.card}` }}>
+   420→                <Image src="/author-image.png" alt="Mémère — author of The Dancing Queen" fill className="object-cover" priority />
+   421→              </div>
+   422→              <div className="absolute inset-0 rounded-full animate-pulse-soft" style={{ border: `2px solid ${theme.accent}40`, transform:"scale(1.1)" }} aria-hidden="true" />
+   423→            </div>
+   424→          </Reveal>
+   425→          <Reveal delay={200}>
+   426→            <div>
+   427→              <blockquote className="text-2xl md:text-3xl font-medium italic leading-relaxed mb-8" style={{ color: theme.primary }}>
+   428→                &ldquo;For George and Myles, my grandsons, who fill my heart with feelings I&apos;ve never had to explore before.&rdquo;
+   429→              </blockquote>
+   430→              <hr className="mb-8" style={{ borderColor: theme.accent+"40" }} />
+   431→              <div className="space-y-5 leading-relaxed" style={{ color: theme.mutedFg }}>
+   432→                <p>Known to her grandsons as <strong style={{ color: theme.primary }}>Mémère</strong> — the French word for grandmother — the author wrote <em>The Dancing Queen</em> as a bedtime gift for George and Myles, whom she affectionately calls &ldquo;Critter and Bug.&rdquo; What began as a personal lullaby grew into a story she wanted to share with every child who still looks for a little magic before saying good night.</p>
+   433→                <p>In her dedication, Mémère writes about a love that has no words — the love for a mother and father, the love that completes your life, the love that explodes your heart when you hold your newborn child. But she reserves her most awe-filled words for grandchildren.</p>
+   434→                <p>This book is that feeling, distilled into verse and illustration — a grandmother&apos;s love letter to the wonder of childhood, and to the tiny guardians who watch over our children&apos;s dreams.</p>
+   435→              </div>
+   436→              <div className="mt-8">
+   437→                <p className="font-semibold text-lg" style={{ color: theme.primary }}>&ldquo;Love you to the moon and back&rdquo;</p>
+   438→                <p style={{ color: theme.accent }}>— Mémère</p>
+   439→              </div>
+   440→            </div>
+   441→          </Reveal>
+   442→        </div>
+   443→
+   444→        {/* ─── Color Palette Journey ─── */}
+   445→        <Reveal delay={300}>
+   446→          <div>
+   447→            <h3 className="text-xl font-semibold mb-3 text-center" style={{ color: theme.primary }}>The Day-to-Night Color Journey</h3>
+   448→            <p className="text-center max-w-2xl mx-auto mb-8" style={{ color: theme.mutedFg }}>
+   449→              Click any color to transform the entire website into that moment of the story.
+   450→            </p>
+   451→            <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+   452→              {PALETTE.map(c => (
+   453→                <button key={c.key} onClick={() => setTheme(c.key)}
+   454→                  className="flex flex-col items-center gap-2 group cursor-pointer p-2 rounded-xl transition-all duration-300 hover:scale-110"
+   455→                  style={{ background: themeKey === c.key ? theme.primary+"20" : "transparent", outline: themeKey === c.key ? `2px solid ${theme.primary}` : "none" }}>
+   456→                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-full shadow-md transition-transform duration-300 group-hover:scale-110" style={{ background: c.color, border: `2px solid ${theme.border}` }} />
+   457→                  <span className="text-xs font-medium" style={{ color: theme.mutedFg }}>{c.label}</span>
+   458→                  <span className="text-[10px] uppercase tracking-wider" style={{ color: theme.accent }}>{c.phase}</span>
+   459→                </button>
+   460→              ))}
+   461→            </div>
+   462→          </div>
+   463→        </Reveal>
+   464→      </div>
+   465→    </div>
+   466→  );
+   467→}
+   468→
+   469→/* ═══════════════════════════════════════════════════
+   470→   TRAILER PAGE
+   471→   ═══════════════════════════════════════════════════ */
+   472→
+   473→function TrailerPage() {
+   474→  const { theme } = useApp();
+   475→  return (
+   476→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   477→      <Butterflies count={3} /><QueenSparkles />
+   478→      <div className="max-w-4xl mx-auto relative z-10">
+   479→        <Reveal><div className="text-center mb-12">
+   480→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Sneak Peek</p>
+   481→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Book Trailer</h2>
+   482→          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
+   483→          <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: theme.mutedFg }}>
+   484→            Watch the Dancing Queen come to life — from sunlit backyard dances to the quiet magic of a child&apos;s pillow at night.
+   485→          </p>
+   486→        </div></Reveal>
+   487→
+   488→        <Reveal delay={200}>
+   489→          <div className="relative rounded-2xl overflow-hidden shadow-2xl" style={{ border: `1px solid ${theme.border}` }}>
+   490→            <video controls preload="metadata" className="w-full aspect-video" style={{ background: theme.primary }} playsInline>
+   491→              <source src="/trailer.mp4" type="video/mp4" />
+   492→            </video>
+   493→          </div>
+   494→        </Reveal>
+   495→
+   496→        <Reveal delay={300}><p className="mt-10 text-center text-sm italic" style={{ color: theme.mutedFg }}>
+   497→          The trailer follows the book&apos;s day-to-night arc: sunlit backyard play gives way to lavender dusk, then deep plum nighttime warmth.
+   498→        </p></Reveal>
+   499→      </div>
+   500→    </div>
+   501→  );
+   502→}
+   503→
+   504→/* ═══════════════════════════════════════════════════
+   505→   CONTACT PAGE
+   506→   ═══════════════════════════════════════════════════ */
+   507→
+   508→function ContactPage() {
+   509→  const { theme } = useApp();
+   510→  const [sent, setSent] = useState(false);
+   511→  return (
+   512→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden" style={{ background: theme.bg }}>
+   513→      <Butterflies count={3} /><QueenSparkles />
+   514→      <div className="max-w-2xl mx-auto relative z-10">
+   515→        <Reveal><div className="text-center mb-12">
+   516→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-3" style={{ color: theme.accent }}>Reach Out</p>
+   517→          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: theme.primary }}>Contact Mémère</h2>
+   518→          <div className="w-20 h-1 rounded-full mx-auto mb-8" style={{ background: theme.accent }} />
+   519→          <p className="text-lg leading-relaxed" style={{ color: theme.mutedFg }}>
+   520→            For inquiries, press copies, or to share what The Dancing Queen means to your family.
+   521→          </p>
+   522→        </div></Reveal>
+   523→
+   524→        <Reveal delay={200}>
+   525→          <div className="rounded-2xl p-8 md:p-10 shadow-lg" style={{ background: theme.card, border: `1px solid ${theme.border}` }}>
+   526→            {sent ? (
+   527→              <div className="text-center py-12">
+   528→                <p className="text-4xl mb-4">💌</p>
+   529→                <h3 className="text-2xl font-semibold mb-3" style={{ color: theme.primary }}>Message Sent!</h3>
+   530→                <p style={{ color: theme.mutedFg }}>Thank you for reaching out. Mémère will treasure your words.</p>
+   531→              </div>
+   532→            ) : (
+   533→              <form onSubmit={e => { e.preventDefault(); setSent(true); }} className="space-y-6">
+   534→                <div>
+   535→                  <label className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Your Name</label>
+   536→                  <input type="text" required className="w-full px-4 py-3 rounded-xl text-base outline-none focus:ring-2" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="Enter your name" />
+   537→                </div>
+   538→                <div>
+   539→                  <label className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Email Address</label>
+   540→                  <input type="email" required className="w-full px-4 py-3 rounded-xl text-base outline-none focus:ring-2" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="you@example.com" />
+   541→                </div>
+   542→                <div>
+   543→                  <label className="block text-sm font-medium mb-2" style={{ color: theme.primary }}>Your Message</label>
+   544→                  <textarea required rows={5} className="w-full px-4 py-3 rounded-xl text-base outline-none focus:ring-2 resize-none" style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.fg, "--tw-ring-color": theme.accent } as React.CSSProperties} placeholder="Share your thoughts..." />
+   545→                </div>
+   546→                <Button type="submit" size="lg" className="w-full font-semibold py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300" style={{ background: theme.primary, color: theme.primaryFg }}>
+   547→                  Send Message
+   548→                </Button>
+   549→              </form>
+   550→            )}
+   551→          </div>
+   552→        </Reveal>
+   553→      </div>
+   554→    </div>
+   555→  );
+   556→}
+   557→
+   558→/* ═══════════════════════════════════════════════════
+   559→   PURCHASE PAGE (Get the Book)
+   560→   ═══════════════════════════════════════════════════ */
+   561→
+   562→function PurchasePage() {
+   563→  const { theme, navigate } = useApp();
+   564→  return (
+   565→    <div className="min-h-screen pt-24 pb-20 px-6 relative overflow-hidden flex items-center justify-center" style={{ background: theme.primary }}>
+   566→      <Butterflies count={5} /><StarField />
+   567→      <div className="max-w-3xl mx-auto text-center relative z-10">
+   568→        <Reveal>
+   569→          <p className="text-sm font-medium tracking-[0.2em] uppercase mb-4" style={{ color: theme.accent }}>Available Now</p>
+   570→          <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
+   571→            Every Child Deserves<br /><span style={{ color: theme.accent }}>a Little Magic</span>
+   572→          </h2>
+   573→          <p className="text-lg text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
+   574→            The Dancing Queen is more than a bedtime story — it is a grandmother&apos;s love letter to the wonder of childhood, and to the tiny guardians who watch over our children&apos;s dreams.
+   575→          </p>
+   576→          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+   577→            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" style={{ background: theme.accent, color: theme.accentFg }}>
+   578→              Order Your Copy
+   579→            </Button>
+   580→            <Button size="lg" className="font-semibold px-10 py-6 text-base rounded-full border-2 hover:scale-105 transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.35)", color: "#FFFFFF", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("contact")}>
+   581→              Contact Mémère
+   582→            </Button>
+   583→          </div>
+   584→          <p className="text-white/40 text-sm mt-12 italic">&ldquo;To Every Child who believes in tiny wonders…&rdquo;</p>
+   585→        </Reveal>
+   586→      </div>
+   587→    </div>
+   588→  );
+   589→}
+   590→
+   591→/* ═══════════════════════════════════════════════════
+   592→   FOOTER
+   593→   ═══════════════════════════════════════════════════ */
+   594→
+   595→function Footer() {
+   596→  const { theme, navigate } = useApp();
+   597→  const links: { label: string; href: PageId }[] = [
+   598→    { label: "Home", href: "home" },
+   599→    { label: "About the Book", href: "book" },
+   600→    { label: "About Mémère", href: "author" },
+   601→    { label: "Book Trailer", href: "trailer" },
+   602→  ];
+   603→  return (
+   604→    <footer style={{ background: theme.primary, color: theme.primaryFg }} className="py-12 px-6 no-theme-transition">
+   605→      <div className="max-w-6xl mx-auto">
+   606→        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+   607→          <div>
+   608→            <h4 className="font-semibold text-lg mb-3">The Dancing Queen</h4>
+   609→            <p className="text-sm leading-relaxed opacity-70">A whimsical bedtime picture book by Mémère. Dedicated to George and Myles — and to every child who still looks for a little magic before saying good night.</p>
+   610→          </div>
+   611→          <div>
+   612→            <h4 className="font-semibold text-lg mb-3">Quick Links</h4>
+   613→            <ul className="space-y-2 text-sm">
+   614→              {links.map(l => <li key={l.href}><button onClick={() => navigate(l.href)} className="hover:opacity-100 opacity-70 transition-opacity duration-200">{l.label}</button></li>)}
+   615→            </ul>
+   616→          </div>
+   617→          <div>
+   618→            <h4 className="font-semibold text-lg mb-3">Connect</h4>
+   619→            <p className="text-sm leading-relaxed mb-4 opacity-70">For inquiries, press copies, or to share what The Dancing Queen means to your family.</p>
+   620→            <Button size="sm" className="rounded-full text-sm font-medium" style={{ background: theme.accent, color: theme.accentFg }} onClick={() => navigate("contact")}>
+   621→              Get in Touch
+   622→            </Button>
+   623→          </div>
+   624→        </div>
+   625→        <hr className="opacity-10 mb-6" />
+   626→        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-xs opacity-40">
+   627→          <p>&copy; {new Date().getFullYear()} The Dancing Queen. All Rights Reserved.</p>
+   628→          <p>Written with love by <span style={{ color: theme.accent }}>Mémère</span> for George and Myles</p>
+   629→        </div>
+   630→      </div>
+   631→    </footer>
+   632→  );
+   633→}
+   634→
+   635→/* ═══════════════════════════════════════════════════
+   636→   MAIN APP — SPA Router + Theme Provider
+   637→   ═══════════════════════════════════════════════════ */
+   638→
+   639→export default function Home() {
+   640→  const [page, setPage] = useState<PageId>("home");
+   641→  const [themeKey, setThemeKey] = useState("plum");
+   642→  const [transitioning, setTransitioning] = useState(false);
+   643→  const theme = THEMES[themeKey];
+   644→
+   645→  // Apply theme to DOM
+   646→  useEffect(() => { applyThemeToDOM(theme); }, [theme]);
+   647→
+   648→  const navigate = useCallback((p: PageId) => {
+   649→    if (p === page || transitioning) return;
+   650→    setTransitioning(true);
+   651→    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+   652→    setTimeout(() => { setPage(p); setTimeout(() => setTransitioning(false), 50); }, 350);
+   653→  }, [page, transitioning]);
+   654→
+   655→  const ctx = { theme, themeKey, setTheme: setThemeKey, navigate, page };
+   656→
+   657→  const pages: Record<PageId, React.ReactNode> = {
+   658→    home: <HomePage />,
+   659→    book: <BookPage />,
+   660→    author: <AuthorPage />,
+   661→    trailer: <TrailerPage />,
+   662→    contact: <ContactPage />,
+   663→    purchase: <PurchasePage />,
+   664→  };
+   665→
+   666→  return (
+   667→    <ThemeCtx.Provider value={ctx}>
+   668→      <div className="min-h-screen flex flex-col" style={{ background: theme.bg }}>
+   669→        {page !== "home" && <Nav />}
+   670→        <main className="flex-1" style={{ opacity: transitioning ? 0 : 1, transform: transitioning ? "translateY(16px)" : "translateY(0)", transition: "opacity 0.35s ease, transform 0.35s ease" }}>
+   671→          {pages[page]}
+   672→        </main>
+   673→        <Footer />
+   674→      </div>
+   675→    </ThemeCtx.Provider>
+   676→  );
+   677→}
