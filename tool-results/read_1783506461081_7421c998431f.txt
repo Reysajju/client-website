@@ -1,0 +1,920 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useRef, useState, useCallback } from "react";
+     4→import Image from "next/image";
+     5→import { Button } from "@/components/ui/button";
+     6→import { Separator } from "@/components/ui/separator";
+     7→
+     8→/* ─── Star particles for hero ─── */
+     9→function StarField() {
+    10→  const stars = Array.from({ length: 20 }, (_, i) => ({
+    11→    id: i,
+    12→    left: `${Math.random() * 100}%`,
+    13→    top: `${Math.random() * 100}%`,
+    14→    delay: `${Math.random() * 3}s`,
+    15→    size: Math.random() * 3 + 2,
+    16→  }));
+    17→
+    18→  return (
+    19→    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    20→      {stars.map((s) => (
+    21→        <div
+    22→          key={s.id}
+    23→          className="star"
+    24→          style={{
+    25→            left: s.left,
+    26→            top: s.top,
+    27→            width: `${s.size}px`,
+    28→            height: `${s.size}px`,
+    29→            animationDelay: s.delay,
+    30→          }}
+    31→        />
+    32→      ))}
+    33→    </div>
+    34→  );
+    35→}
+    36→
+    37→/* ─── Scroll-reveal hook ─── */
+    38→function useReveal() {
+    39→  const ref = useRef<HTMLDivElement>(null);
+    40→  const [visible, setVisible] = useState(false);
+    41→
+    42→  useEffect(() => {
+    43→    const el = ref.current;
+    44→    if (!el) return;
+    45→    const obs = new IntersectionObserver(
+    46→      ([entry]) => {
+    47→        if (entry.isIntersecting) {
+    48→          setVisible(true);
+    49→          obs.unobserve(el);
+    50→        }
+    51→      },
+    52→      { threshold: 0.15 }
+    53→    );
+    54→    obs.observe(el);
+    55→    return () => obs.disconnect();
+    56→  }, []);
+    57→
+    58→  return { ref, visible };
+    59→}
+    60→
+    61→function RevealSection({
+    62→  children,
+    63→  className = "",
+    64→  delay = 0,
+    65→}: {
+    66→  children: React.ReactNode;
+    67→  className?: string;
+    68→  delay?: number;
+    69→}) {
+    70→  const { ref, visible } = useReveal();
+    71→  return (
+    72→    <div
+    73→      ref={ref}
+    74→      className={`reveal ${visible ? "visible" : ""} ${className}`}
+    75→      style={{ transitionDelay: `${delay}ms` }}
+    76→    >
+    77→      {children}
+    78→    </div>
+    79→  );
+    80→}
+    81→
+    82→/* ─── Navigation ─── */
+    83→function Nav() {
+    84→  const [scrolled, setScrolled] = useState(false);
+    85→  const [mobileOpen, setMobileOpen] = useState(false);
+    86→
+    87→  useEffect(() => {
+    88→    const handleScroll = () => setScrolled(window.scrollY > 60);
+    89→    window.addEventListener("scroll", handleScroll);
+    90→    return () => window.removeEventListener("scroll", handleScroll);
+    91→  }, []);
+    92→
+    93→  const links = [
+    94→    { label: "Home", href: "#home" },
+    95→    { label: "The Book", href: "#book" },
+    96→    { label: "About Mémère", href: "#author" },
+    97→    { label: "Trailer", href: "#trailer" },
+    98→  ];
+    99→
+   100→  const handleClick = useCallback(
+   101→    (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+   102→      e.preventDefault();
+   103→      const target = document.querySelector(href);
+   104→      target?.scrollIntoView({ behavior: "smooth" });
+   105→      setMobileOpen(false);
+   106→    },
+   107→    []
+   108→  );
+   109→
+   110→  return (
+   111→    <nav
+   112→      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+   113→        scrolled
+   114→          ? "bg-white/90 backdrop-blur-md shadow-md"
+   115→          : "bg-transparent"
+   116→      }`}
+   117→    >
+   118→      <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+   119→        <a
+   120→          href="#home"
+   121→          onClick={(e) => handleClick(e, "#home")}
+   122→          className={`text-lg font-semibold tracking-wide transition-colors duration-300 ${
+   123→            scrolled ? "text-plum" : "text-white"
+   124→          }`}
+   125→        >
+   126→          The Dancing Queen
+   127→        </a>
+   128→
+   129→        {/* Desktop links */}
+   130→        <div className="hidden md:flex items-center gap-8">
+   131→          {links.map((link) => (
+   132→            <a
+   133→              key={link.href}
+   134→              href={link.href}
+   135→              onClick={(e) => handleClick(e, link.href)}
+   136→              className={`text-sm font-medium transition-colors duration-300 hover:text-golden ${
+   137→                scrolled ? "text-foreground/70" : "text-white/90"
+   138→              }`}
+   139→            >
+   140→              {link.label}
+   141→            </a>
+   142→          ))}
+   143→        </div>
+   144→
+   145→        {/* Mobile hamburger */}
+   146→        <button
+   147→          className="md:hidden flex flex-col gap-1.5 p-2"
+   148→          onClick={() => setMobileOpen(!mobileOpen)}
+   149→          aria-label="Toggle menu"
+   150→        >
+   151→          <span
+   152→            className={`block w-6 h-0.5 transition-all duration-300 ${
+   153→              scrolled ? "bg-plum" : "bg-white"
+   154→            } ${mobileOpen ? "rotate-45 translate-y-2" : ""}`}
+   155→          />
+   156→          <span
+   157→            className={`block w-6 h-0.5 transition-all duration-300 ${
+   158→              scrolled ? "bg-plum" : "bg-white"
+   159→            } ${mobileOpen ? "opacity-0" : ""}`}
+   160→          />
+   161→          <span
+   162→            className={`block w-6 h-0.5 transition-all duration-300 ${
+   163→              scrolled ? "bg-plum" : "bg-white"
+   164→            } ${mobileOpen ? "-rotate-45 -translate-y-2" : ""}`}
+   165→          />
+   166→        </button>
+   167→      </div>
+   168→
+   169→      {/* Mobile menu */}
+   170→      {mobileOpen && (
+   171→        <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-lavender-soft shadow-lg">
+   172→          <div className="flex flex-col px-6 py-4 gap-4">
+   173→            {links.map((link) => (
+   174→              <a
+   175→                key={link.href}
+   176→                href={link.href}
+   177→                onClick={(e) => handleClick(e, link.href)}
+   178→                className="text-foreground/80 text-base font-medium py-2 hover:text-plum transition-colors"
+   179→              >
+   180→                {link.label}
+   181→              </a>
+   182→            ))}
+   183→          </div>
+   184→        </div>
+   185→      )}
+   186→    </nav>
+   187→  );
+   188→}
+   189→
+   190→/* ─── Hero Section ─── */
+   191→function HeroSection() {
+   192→  const sectionRef = useRef<HTMLElement>(null);
+   193→  const videoRef = useRef<HTMLVideoElement>(null);
+   194→  const rafRef = useRef<number>(0);
+   195→  const [isMuted, setIsMuted] = useState(false);
+   196→
+   197→  /* ── Autoplay: try unmuted, fall back to muted + auto-unmute on first gesture ── */
+   198→  useEffect(() => {
+   199→    const video = videoRef.current;
+   200→    if (!video) return;
+   201→    video.muted = false;
+   202→    video.volume = 1;
+   203→    video.play().catch(() => {
+   204→      video.muted = true;
+   205→      setIsMuted(true);
+   206→      const unmute = () => {
+   207→        video.muted = false;
+   208→        video.volume = 1;
+   209→        setIsMuted(false);
+   210→        document.removeEventListener("click", unmute);
+   211→        document.removeEventListener("touchstart", unmute);
+   212→      };
+   213→      document.addEventListener("click", unmute, { once: true });
+   214→      document.addEventListener("touchstart", unmute, { once: true });
+   215→    });
+   216→  }, []);
+   217→
+   218→  /* ── Fade video audio as user scrolls away from hero ── */
+   219→  useEffect(() => {
+   220→    const video = videoRef.current;
+   221→    const section = sectionRef.current;
+   222→    if (!video || !section) return;
+   223→
+   224→    const onScroll = () => {
+   225→      cancelAnimationFrame(rafRef.current);
+   226→      rafRef.current = requestAnimationFrame(() => {
+   227→        const rect = section.getBoundingClientRect();
+   228→        // rect.top goes from 0 (section top at viewport top) to negative as we scroll past
+   229→        // Hero is 100vh, so when rect.bottom <= 0 the section is fully scrolled past
+   230→        const heroHeight = rect.height;
+   231→        // scrolled fraction: 0 = at top, 1 = fully out of view
+   232→        const scrolled = Math.max(0, Math.min(1, -rect.bottom / heroHeight));
+   233→        // Start fading once the bottom edge enters the viewport, fully silent when section gone
+   234→        // Fade zone: from 0% scrolled (section fully visible) to 100% scrolled (fully gone)
+   235→        video.volume = Math.max(0, 1 - scrolled);
+   236→        // If effectively silent, just mute to save resources
+   237→        if (video.volume < 0.01) video.muted = true;
+   238→        else if (isMuted === false) video.muted = false;
+   239→      });
+   240→    };
+   241→
+   242→    window.addEventListener("scroll", onScroll, { passive: true });
+   243→    return () => {
+   244→      window.removeEventListener("scroll", onScroll);
+   245→      cancelAnimationFrame(rafRef.current);
+   246→    };
+   247→  }, [isMuted]);
+   248→
+   249→  const toggleMute = useCallback(() => {
+   250→    const video = videoRef.current;
+   251→    if (!video) return;
+   252→    video.muted = !video.muted;
+   253→    setIsMuted(video.muted);
+   254→    if (!video.muted) video.volume = 1;
+   255→  }, []);
+   256→
+   257→  return (
+   258→    <section
+   259→      ref={sectionRef}
+   260→      id="home"
+   261→      className="relative min-h-screen flex items-center justify-center overflow-hidden"
+   262→    >
+   263→      {/* ─── Full-bleed background video ─── */}
+   264→      <video
+   265→        ref={videoRef}
+   266→        src="/trailer.mp4"
+   267→        autoPlay
+   268→        loop
+   269→        muted={false}
+   270→        playsInline
+   271→        className="absolute inset-0 w-full h-full object-cover"
+   272→      />
+   273→
+   274→      {/* ─── Layer 1: Edge tint (lets video breathe at edges) ─── */}
+   275→      <div
+   276→        className="absolute inset-0 z-[1] pointer-events-none"
+   277→        style={{
+   278→          background:
+   279→            "linear-gradient(to bottom, rgba(74,40,72,0.30) 0%, transparent 20%, transparent 80%, rgba(74,40,72,0.50) 100%)",
+   280→        }}
+   281→      />
+   282→
+   283→      {/* ─── Layer 2: Center text-safe zone — strong dark band to block ALL video text ─── */}
+   284→      <div
+   285→        className="absolute inset-0 z-[2] pointer-events-none"
+   286→        style={{
+   287→          background: `
+   288→            radial-gradient(
+   289→              ellipse 70% 60% at 50% 45%,
+   290→              rgba(30,15,30,0.88) 0%,
+   291→              rgba(50,25,50,0.75) 40%,
+   292→              rgba(74,40,72,0.50) 65%,
+   293→              transparent 85%
+   294→            )
+   295→          `,
+   296→        }}
+   297→      />
+   298→
+   299→      {/* ─── Layer 3: Subtle color accent at corners ─── */}
+   300→      <div
+   301→        className="absolute inset-0 z-[3] pointer-events-none"
+   302→        style={{
+   303→          background:
+   304→            "linear-gradient(135deg, rgba(212,168,83,0.08) 0%, transparent 40%, transparent 60%, rgba(200,180,216,0.06) 100%)",
+   305→        }}
+   306→      />
+   307→
+   308→      <StarField />
+   309→
+   310→      {/* Decorative floating circles */}
+   311→      <div className="absolute inset-0 z-[4] overflow-hidden pointer-events-none" aria-hidden="true">
+   312→        <div
+   313→          className="absolute w-64 h-64 rounded-full opacity-10 animate-drift"
+   314→          style={{ background: "radial-gradient(circle, #F0D68A 0%, transparent 70%)", top: "10%", left: "-5%" }}
+   315→        />
+   316→        <div
+   317→          className="absolute w-48 h-48 rounded-full opacity-10 animate-drift"
+   318→          style={{ background: "radial-gradient(circle, #E8DCF0 0%, transparent 70%)", bottom: "15%", right: "-3%", animationDelay: "3s" }}
+   319→        />
+   320→        <div
+   321→          className="absolute w-32 h-32 rounded-full opacity-15 animate-drift"
+   322→          style={{ background: "radial-gradient(circle, #F5E6D8 0%, transparent 70%)", top: "50%", left: "60%", animationDelay: "5s" }}
+   323→        />
+   324→      </div>
+   325→
+   326→      {/* ─── Content ─── */}
+   327→      <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+   328→        <p
+   329→          className="text-golden-light/90 text-sm md:text-base tracking-[0.3em] uppercase mb-5 animate-fade-in-up"
+   330→          style={{
+   331→            textShadow: "0 2px 12px rgba(0,0,0,0.7), 0 0px 4px rgba(0,0,0,0.5)",
+   332→          }}
+   333→        >
+   334→          A Bedtime Story by Mémère
+   335→        </p>
+   336→        <h1
+   337→          className="text-5xl sm:text-6xl md:text-8xl font-bold text-white leading-tight mb-6 animate-fade-in-up"
+   338→          style={{
+   339→            animationDelay: "0.2s",
+   340→            textShadow: "0 4px 30px rgba(0,0,0,0.85), 0 2px 10px rgba(0,0,0,0.6), 0 0px 60px rgba(74,40,72,0.4)",
+   341→          }}
+   342→        >
+   343→          The Dancing
+   344→          <br />
+   345→          <span className="text-golden-light" style={{ textShadow: "0 4px 30px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)" }}>Queen</span>
+   346→        </h1>
+   347→        <p
+   348→          className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-10 animate-fade-in-up"
+   349→          style={{
+   350→            animationDelay: "0.4s",
+   351→            textShadow: "0 2px 16px rgba(0,0,0,0.75), 0 1px 4px rgba(0,0,0,0.5)",
+   352→          }}
+   353→        >
+   354→          So light and fair, she dances for children everywhere.
+   355→          <br />
+   356→          <span className="text-white/70 text-base">
+   357→            A whimsical tale of a tiny winged guardian who watches over every child&apos;s dreams.
+   358→          </span>
+   359→        </p>
+   360→        <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
+   361→          <Button
+   362→            size="lg"
+   363→            className="bg-golden hover:bg-golden/90 text-plum-deep font-semibold px-8 py-6 text-base rounded-full shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/30 transition-all duration-300 hover:scale-105"
+   364→            onClick={() =>
+   365→              document.querySelector("#book")?.scrollIntoView({ behavior: "smooth" })
+   366→            }
+   367→          >
+   368→            Discover the Story
+   369→          </Button>
+   370→          <Button
+   371→            variant="outline"
+   372→            size="lg"
+   373→            className="border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold px-8 py-6 text-base rounded-full backdrop-blur-sm shadow-lg shadow-black/20 transition-all duration-300"
+   374→            onClick={() =>
+   375→              document.querySelector("#trailer")?.scrollIntoView({ behavior: "smooth" })
+   376→            }
+   377→          >
+   378→            Watch the Trailer
+   379→          </Button>
+   380→        </div>
+   381→      </div>
+   382→
+   383→      {/* ─── Mute / Unmute button ─── */}
+   384→      <button
+   385→        onClick={toggleMute}
+   386→        aria-label={isMuted ? "Unmute video" : "Mute video"}
+   387→        className="absolute bottom-8 right-8 z-20 w-11 h-11 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/25 hover:scale-110 transition-all duration-300"
+   388→      >
+   389→        {isMuted ? (
+   390→          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   391→            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+   392→            <line x1="23" y1="9" x2="17" y2="15" />
+   393→            <line x1="17" y1="9" x2="23" y2="15" />
+   394→          </svg>
+   395→        ) : (
+   396→          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   397→            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+   398→            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+   399→            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+   400→          </svg>
+   401→        )}
+   402→      </button>
+   403→
+   404→      {/* Scroll indicator */}
+   405→      <div className="absolute bottom-8 left-8 z-10 animate-float">
+   406→        <svg
+   407→          className="w-6 h-6 text-white/50"
+   408→          fill="none"
+   409→          stroke="currentColor"
+   410→          viewBox="0 0 24 24"
+   411→        >
+   412→          <path
+   413→            strokeLinecap="round"
+   414→            strokeLinejoin="round"
+   415→            strokeWidth={2}
+   416→            d="M19 14l-7 7m0 0l-7-7m7 7V3"
+   417→          />
+   418→        </svg>
+   419→      </div>
+   420→    </section>
+   421→  );
+   422→}
+   423→
+   424→/* ─── Whimsical Divider ─── */
+   425→function Divider() {
+   426→  return (
+   427→    <div className="whimsical-divider" aria-hidden="true">
+   428→      <span className="text-golden text-xl">&#10022;</span>
+   429→    </div>
+   430→  );
+   431→}
+   432→
+   433→/* ─── Book Verse Highlight ─── */
+   434→function VerseCard({
+   435→  text,
+   436→  label,
+   437→  bg = "bg-white",
+   438→  accent = "text-plum",
+   439→}: {
+   440→  text: string;
+   441→  label: string;
+   442→  bg?: string;
+   443→  accent?: string;
+   444→}) {
+   445→  return (
+   446→    <div className={`${bg} rounded-2xl p-6 md:p-8 shadow-sm border border-lavender-soft/50 hover:shadow-md transition-shadow duration-300`}>
+   447→      <p className={`text-lg md:text-xl font-medium italic ${accent} leading-relaxed`}>
+   448→        &ldquo;{text}&rdquo;
+   449→      </p>
+   450→      <p className="text-muted-foreground text-sm mt-3">{label}</p>
+   451→    </div>
+   452→  );
+   453→}
+   454→
+   455→/* ─── About the Book Section ─── */
+   456→function BookSection() {
+   457→  const verses = [
+   458→    {
+   459→      text: "The Dancing Queen, so light and Fair, dances for children everywhere.",
+   460→      label: "Opening lines",
+   461→    },
+   462→    {
+   463→      text: "She'll balance and bounce and swing on a curl, or slide down on a long straight pony tailed girl.",
+   464→      label: "The playful spirit",
+   465→    },
+   466→    {
+   467→      text: "She prefers soft noises and the songs of the night.",
+   468→      label: "As evening falls",
+   469→    },
+   470→    {
+   471→      text: "Your night dreams are special and guarded with care.",
+   472→      label: "Her promise",
+   473→    },
+   474→  ];
+   475→
+   476→  const features = [
+   477→    {
+   478→      icon: "🌙",
+   479→      title: "Bedtime Ritual",
+   480→      description:
+   481→        "The story mirrors a real bedtime routine — from daytime energy and play through a gentle dusk transition to a calm, safe nighttime resolution. Each reading becomes part of a child's own winding-down ritual, helping ease the shift from busy day to peaceful sleep.",
+   482→    },
+   483→    {
+   484→      icon: "🧚",
+   485→      title: "Guardian Fairy Mythology",
+   486→      description:
+   487→        "The Dancing Queen introduces an entirely new piece of children's mythology — a tiny, winged, fairy-like being who lives in a child's hair, dances on curls and ponytails, and stands watch over their pillow as they sleep. She is the child's own personal guardian of dreams.",
+   488→    },
+   489→    {
+   490→      icon: "🎨",
+   491→      title: "A Day-to-Night Color Journey",
+   492→      description:
+   493→        "The illustrations carry the reader through a breathtaking visual arc: warm cream and blush tones in the opening spreads give way to bright forest greens and golden hues for daytime backyard play, then gradually crossfade into lavender and deep plum as night falls — the art itself tells the story of the day ending.",
+   494→    },
+   495→    {
+   496→      icon: "📖",
+   497→      title: "Rhyming Verse, Read Aloud",
+   498→      description:
+   499→        "Written in a light, musical rhyming style meant to be read aloud by a parent or grandparent at bedtime. The verse has a natural, bouncing rhythm that holds the attention of young listeners while carrying them gently toward sleep.",
+   500→    },
+   501→    {
+   502→      icon: "👶",
+   503→      title: "Ages 2 to 6",
+   504→      description:
+   505→        "Designed for the youngest readers and listeners — children aged roughly two to six who still look for a little magic before saying good night. The simple, repeating rhythms and warm, reassuring message make it perfect for the bedtime crowd.",
+   506→    },
+   507→    {
+   508→      icon: "💝",
+   509→      title: "A Grandmother's Gift",
+   510→      description:
+   511→        "Written by Mémère — a grandmother — and dedicated to her grandsons George and Myles, whom she lovingly calls \"Critter and Bug.\" The book closes with a dedication \"To Every Child\" who believes in tiny wonders, extending this grandmother's love to families everywhere.",
+   512→    },
+   513→  ];
+   514→
+   515→  return (
+   516→    <section
+   517→      id="book"
+   518→      className="py-20 md:py-28 px-6"
+   519→      style={{
+   520→        background: "linear-gradient(180deg, #FFF8F0 0%, #F5E6D8 50%, #FFF8F0 100%)",
+   521→      }}
+   522→    >
+   523→      <div className="max-w-6xl mx-auto">
+   524→        <RevealSection>
+   525→          <div className="text-center mb-16">
+   526→            <p className="text-golden font-medium tracking-[0.2em] uppercase text-sm mb-3">
+   527→              The Story
+   528→            </p>
+   529→            <h2 className="text-3xl md:text-5xl font-bold text-plum mb-6">
+   530→              About the Book
+   531→            </h2>
+   532→            <div className="w-20 h-1 bg-golden rounded-full mx-auto mb-8" />
+   533→            <p className="text-muted-foreground text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
+   534→              The Dancing Queen invents a new piece of children&apos;s mythology — a tiny, 
+   535→              light, fairy-like being with wings who lives in a child&apos;s hair. By day she plays 
+   536→              in backyards, dances on curls and ponytails, and shyly watches children at play. 
+   537→              As evening falls, she grows quiet, tucks her wings in close, and stands guard 
+   538→              over their dreams until morning.
+   539→            </p>
+   540→          </div>
+   541→        </RevealSection>
+   542→
+   543→        {/* Verses */}
+   544→        <RevealSection delay={150}>
+   545→          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-20">
+   546→            {verses.map((v) => (
+   547→              <VerseCard key={v.label} text={v.text} label={v.label} />
+   548→            ))}
+   549→          </div>
+   550→        </RevealSection>
+   551→
+   552→        <Divider />
+   553→
+   554→        {/* Features grid */}
+   555→        <RevealSection delay={200}>
+   556→          <div className="text-center mt-12 mb-12">
+   557→            <h3 className="text-2xl md:text-3xl font-semibold text-plum mb-4">
+   558→              What Makes This Book Special
+   559→            </h3>
+   560→            <p className="text-muted-foreground max-w-xl mx-auto">
+   561→              Every detail — from the rhyming verse to the shifting color palette — is crafted to create a bedtime experience children will ask for night after night.
+   562→            </p>
+   563→          </div>
+   564→        </RevealSection>
+   565→
+   566→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+   567→          {features.map((f, i) => (
+   568→            <RevealSection key={f.title} delay={i * 100}>
+   569→              <div className="bg-white rounded-2xl p-6 md:p-8 h-full border border-lavender-soft/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+   570→                <span className="text-3xl mb-4 block">{f.icon}</span>
+   571→                <h4 className="text-lg font-semibold text-plum mb-3">{f.title}</h4>
+   572→                <p className="text-muted-foreground text-sm leading-relaxed">{f.description}</p>
+   573→              </div>
+   574→            </RevealSection>
+   575→          ))}
+   576→        </div>
+   577→
+   578→        {/* Book specs */}
+   579→        <RevealSection delay={300}>
+   580→          <div className="mt-20 bg-white/70 backdrop-blur-sm rounded-2xl p-8 md:p-10 border border-lavender-soft/40">
+   581→            <h3 className="text-xl font-semibold text-plum mb-6 text-center">Book Details</h3>
+   582→            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+   583→              {[
+   584→                { label: "Format", value: "Picture Book" },
+   585→                { label: "Pages", value: "32 pages" },
+   586→                { label: "Trim", value: '8.75" x 8.75"' },
+   587→                { label: "Ages", value: "2 – 6" },
+   588→              ].map((item) => (
+   589→                <div key={item.label}>
+   590→                  <p className="text-xs uppercase tracking-wider text-golden font-medium mb-1">
+   591→                    {item.label}
+   592→                  </p>
+   593→                  <p className="text-lg font-semibold text-plum">{item.value}</p>
+   594→                </div>
+   595→              ))}
+   596→            </div>
+   597→          </div>
+   598→        </RevealSection>
+   599→      </div>
+   600→    </section>
+   601→  );
+   602→}
+   603→
+   604→/* ─── Author Section ─── */
+   605→function AuthorSection() {
+   606→  return (
+   607→    <section
+   608→      id="author"
+   609→      className="py-20 md:py-28 px-6"
+   610→      style={{
+   611→        background: "linear-gradient(180deg, #F5E6D8 0%, #E8DCF0 50%, #F5E6D8 100%)",
+   612→      }}
+   613→    >
+   614→      <div className="max-w-6xl mx-auto">
+   615→        <RevealSection>
+   616→          <div className="text-center mb-16">
+   617→            <p className="text-golden font-medium tracking-[0.2em] uppercase text-sm mb-3">
+   618→              The Author
+   619→            </p>
+   620→            <h2 className="text-3xl md:text-5xl font-bold text-plum mb-6">
+   621→              About Mémère
+   622→            </h2>
+   623→            <div className="w-20 h-1 bg-golden rounded-full mx-auto" />
+   624→          </div>
+   625→        </RevealSection>
+   626→
+   627→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+   628→          {/* Author photo */}
+   629→          <RevealSection>
+   630→            <div className="relative flex justify-center">
+   631→              <div className="relative w-72 h-72 md:w-80 md:h-80 rounded-full overflow-hidden shadow-2xl border-4 border-white/80">
+   632→                <Image
+   633→                  src="/author-image.png"
+   634→                  alt="Mémère — author of The Dancing Queen"
+   635→                  fill
+   636→                  className="object-cover"
+   637→                  priority
+   638→                />
+   639→              </div>
+   640→              {/* Decorative ring */}
+   641→              <div
+   642→                className="absolute inset-0 rounded-full border-2 border-golden/30 scale-110 animate-pulse-soft"
+   643→                aria-hidden="true"
+   644→              />
+   645→              <div
+   646→                className="absolute inset-0 rounded-full border border-lavender/20 scale-125 animate-pulse-soft"
+   647→                style={{ animationDelay: "1.5s" }}
+   648→                aria-hidden="true"
+   649→              />
+   650→            </div>
+   651→          </RevealSection>
+   652→
+   653→          {/* Author text */}
+   654→          <RevealSection delay={200}>
+   655→            <div>
+   656→              <blockquote className="text-2xl md:text-3xl font-medium italic text-plum leading-relaxed mb-8">
+   657→                &ldquo;For George and Myles, my grandsons, who fill my heart with feelings 
+   658→                I&apos;ve never had to explore before.&rdquo;
+   659→              </blockquote>
+   660→              <Separator className="bg-golden/30 mb-8" />
+   661→              <div className="space-y-5 text-muted-foreground leading-relaxed">
+   662→                <p>
+   663→                  Known to her grandsons as <span className="text-plum font-medium">Mémère</span> — the French 
+   664→                  word for grandmother — the author wrote <em>The Dancing Queen</em> as a bedtime gift for 
+   665→                  George and Myles, whom she affectionately calls &ldquo;Critter and Bug.&rdquo; What began 
+   666→                  as a personal lullaby for two beloved little boys grew into a story she wanted to share 
+   667→                  with every child who still looks for a little magic before saying good night.
+   668→                </p>
+   669→                <p>
+   670→                  In her dedication, Mémère writes about a love that has no words — the love for a mother 
+   671→                  and father, the love that completes your life, the love that explodes your heart when you 
+   672→                  hold your newborn child. But she reserves her most awe-filled words for grandchildren: 
+   673→                  <em>&ldquo;the feeling of watching your daughter grow with child, or cry some of the 
+   674→                  happiest tears of your life when you hold that new little life… and think… a part of me 
+   675→                  made this possible!&rdquo;</em>
+   676→                </p>
+   677→                <p>
+   678→                  This book is that feeling, distilled into verse and illustration — a grandmother&apos;s 
+   679→                  love letter to the wonder of childhood, and to the tiny guardians who watch over 
+   680→                  our children&apos;s dreams.
+   681→                </p>
+   682→              </div>
+   683→              <div className="mt-8">
+   684→                <p className="text-plum font-semibold text-lg">
+   685→                  &ldquo;Love you to the moon and back&rdquo;
+   686→                </p>
+   687→                <p className="text-golden font-medium">— Mémère</p>
+   688→              </div>
+   689→            </div>
+   690→          </RevealSection>
+   691→        </div>
+   692→
+   693→        {/* Color arc showcase */}
+   694→        <RevealSection delay={300}>
+   695→          <div className="mt-20">
+   696→            <h3 className="text-xl font-semibold text-plum mb-6 text-center">
+   697→              The Day-to-Night Color Journey
+   698→            </h3>
+   699→            <p className="text-muted-foreground text-center max-w-2xl mx-auto mb-8">
+   700→              The illustrations carry readers through a breathtaking visual arc — from the warm cream 
+   701→              and blush tones of morning, through bright greens and golds of backyard play, into 
+   702→              lavender dusk, and finally to the deep plum and violet of the pillow and dreams.
+   703→            </p>
+   704→            <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+   705→              {[
+   706→                { color: "#FFF8F0", label: "Cream", phase: "Morning" },
+   707→                { color: "#F5E6D8", label: "Blush", phase: "Opening" },
+   708→                { color: "#6B7B3A", label: "Olive", phase: "Daytime" },
+   709→                { color: "#D4A853", label: "Gold", phase: "Midday" },
+   710→                { color: "#8B6B4A", label: "Warm Brown", phase: "Afternoon" },
+   711→                { color: "#C8B4D8", label: "Lavender", phase: "Dusk" },
+   712→                { color: "#9B7A8A", label: "Mauve", phase: "Twilight" },
+   713→                { color: "#6B3A6B", label: "Plum", phase: "Night" },
+   714→                { color: "#4A2848", label: "Deep Plum", phase: "Dreams" },
+   715→              ].map((c) => (
+   716→                <div
+   717→                  key={c.label}
+   718→                  className="flex flex-col items-center gap-2 group cursor-default"
+   719→                >
+   720→                  <div
+   721→                    className="w-12 h-12 md:w-14 md:h-14 rounded-full shadow-md border-2 border-white/60 group-hover:scale-110 transition-transform duration-300"
+   722→                    style={{ background: c.color }}
+   723→                    title={`${c.label} — ${c.phase}`}
+   724→                  />
+   725→                  <span className="text-xs text-muted-foreground font-medium">{c.label}</span>
+   726→                  <span className="text-[10px] text-golden uppercase tracking-wider">{c.phase}</span>
+   727→                </div>
+   728→              ))}
+   729→            </div>
+   730→          </div>
+   731→        </RevealSection>
+   732→      </div>
+   733→    </section>
+   734→  );
+   735→}
+   736→
+   737→/* ─── Trailer Section ─── */
+   738→function TrailerSection() {
+   739→  return (
+   740→    <section
+   741→      id="trailer"
+   742→      className="py-20 md:py-28 px-6"
+   743→      style={{
+   744→        background: "linear-gradient(180deg, #FFF8F0 0%, #F5E6D8 100%)",
+   745→      }}
+   746→    >
+   747→      <div className="max-w-4xl mx-auto">
+   748→        <RevealSection>
+   749→          <div className="text-center mb-12">
+   750→            <p className="text-golden font-medium tracking-[0.2em] uppercase text-sm mb-3">
+   751→              Sneak Peek
+   752→            </p>
+   753→            <h2 className="text-3xl md:text-5xl font-bold text-plum mb-6">
+   754→              Book Trailer
+   755→            </h2>
+   756→            <div className="w-20 h-1 bg-golden rounded-full mx-auto mb-8" />
+   757→            <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
+   758→              Watch the Dancing Queen come to life — from sunlit backyard dances 
+   759→              to the quiet magic of a child&apos;s pillow at night. A warm, unhurried 
+   760→              journey through the pages of this bedtime story.
+   761→            </p>
+   762→          </div>
+   763→        </RevealSection>
+   764→
+   765→        <RevealSection delay={200}>
+   766→          <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-lavender-soft/50">
+   767→            <video
+   768→              controls
+   769→              preload="metadata"
+   770→              poster=""
+   771→              className="w-full aspect-video bg-plum-deep"
+   772→              playsInline
+   773→            >
+   774→              <source src="/trailer.mp4" type="video/mp4" />
+   775→              Your browser does not support the video tag.
+   776→            </video>
+   777→          </div>
+   778→        </RevealSection>
+   779→
+   780→        <RevealSection delay={300}>
+   781→          <div className="mt-10 text-center">
+   782→            <p className="text-muted-foreground text-sm italic">
+   783→              The trailer follows the book&apos;s day-to-night arc: sunlit backyard play gives way 
+   784→              to lavender dusk, then deep plum nighttime warmth — with the Dancing Queen 
+   785→              tucking her wings and standing guard over every child&apos;s dreams.
+   786→            </p>
+   787→          </div>
+   788→        </RevealSection>
+   789→      </div>
+   790→    </section>
+   791→  );
+   792→}
+   793→
+   794→/* ─── Closing CTA Section ─── */
+   795→function CTASection() {
+   796→  return (
+   797→    <section
+   798→      className="py-20 md:py-28 px-6 relative overflow-hidden"
+   799→      style={{
+   800→        background:
+   801→          "linear-gradient(160deg, #4A2848 0%, #6B3A6B 40%, #9B7A8A 100%)",
+   802→      }}
+   803→    >
+   804→      <StarField />
+   805→
+   806→      <div className="max-w-3xl mx-auto text-center relative z-10">
+   807→        <RevealSection>
+   808→          <p className="text-golden-light/70 text-sm tracking-[0.2em] uppercase mb-4">
+   809→            For Every Child
+   810→          </p>
+   811→          <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
+   812→            Every Child Deserves
+   813→            <br />
+   814→            <span className="text-golden-light">a Little Magic</span>
+   815→          </h2>
+   816→          <p className="text-white/70 text-lg max-w-xl mx-auto mb-10 leading-relaxed">
+   817→            The Dancing Queen is more than a bedtime story — it is a grandmother&apos;s 
+   818→            love letter to the wonder of childhood, and to the tiny guardians who watch 
+   819→            over our children&apos;s dreams.
+   820→          </p>
+   821→          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+   822→            <Button
+   823→              size="lg"
+   824→              className="bg-golden hover:bg-golden/90 text-plum-deep font-semibold px-10 py-6 text-base rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+   825→            >
+   826→              Get the Book
+   827→            </Button>
+   828→            <Button
+   829→              variant="outline"
+   830→              size="lg"
+   831→              className="border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold px-10 py-6 text-base rounded-full backdrop-blur-sm transition-all duration-300"
+   832→            >
+   833→              Contact Mémère
+   834→            </Button>
+   835→          </div>
+   836→          <p className="text-white/40 text-sm mt-12 italic">
+   837→            &ldquo;To Every Child who believes in tiny wonders…&rdquo;
+   838→          </p>
+   839→        </RevealSection>
+   840→      </div>
+   841→    </section>
+   842→  );
+   843→}
+   844→
+   845→/* ─── Footer ─── */
+   846→function Footer() {
+   847→  return (
+   848→    <footer className="bg-plum-deep text-white/60 py-12 px-6">
+   849→      <div className="max-w-6xl mx-auto">
+   850→        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+   851→          <div>
+   852→            <h4 className="text-white font-semibold text-lg mb-3">The Dancing Queen</h4>
+   853→            <p className="text-sm leading-relaxed">
+   854→              A whimsical bedtime picture book by Mémère. Dedicated to George and Myles — 
+   855→              and to every child who still looks for a little magic before saying good night.
+   856→            </p>
+   857→          </div>
+   858→          <div>
+   859→            <h4 className="text-white font-semibold text-lg mb-3">Quick Links</h4>
+   860→            <ul className="space-y-2 text-sm">
+   861→              {[
+   862→                { label: "Home", href: "#home" },
+   863→                { label: "About the Book", href: "#book" },
+   864→                { label: "About Mémère", href: "#author" },
+   865→                { label: "Book Trailer", href: "#trailer" },
+   866→              ].map((link) => (
+   867→                <li key={link.href}>
+   868→                  <a
+   869→                    href={link.href}
+   870→                    className="hover:text-golden transition-colors duration-200"
+   871→                  >
+   872→                    {link.label}
+   873→                  </a>
+   874→                </li>
+   875→              ))}
+   876→            </ul>
+   877→          </div>
+   878→          <div>
+   879→            <h4 className="text-white font-semibold text-lg mb-3">Connect</h4>
+   880→            <p className="text-sm leading-relaxed mb-4">
+   881→              For inquiries, press copies, or to share what The Dancing Queen means to your family.
+   882→            </p>
+   883→            <Button
+   884→              variant="outline"
+   885→              size="sm"
+   886→              className="border-white/20 text-white/70 hover:bg-white/10 hover:text-white hover:border-white/40 rounded-full text-sm"
+   887→            >
+   888→              Get in Touch
+   889→            </Button>
+   890→          </div>
+   891→        </div>
+   892→        <Separator className="bg-white/10 mb-6" />
+   893→        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/40">
+   894→          <p>&copy; {new Date().getFullYear()} The Dancing Queen. All Rights Reserved.</p>
+   895→          <p>
+   896→            Written with love by{" "}
+   897→            <span className="text-golden/60">Mémère</span> for George and Myles
+   898→          </p>
+   899→        </div>
+   900→      </div>
+   901→    </footer>
+   902→  );
+   903→}
+   904→
+   905→/* ─── Main Page ─── */
+   906→export default function Home() {
+   907→  return (
+   908→    <div className="min-h-screen flex flex-col">
+   909→      <Nav />
+   910→      <main className="flex-1">
+   911→        <HeroSection />
+   912→        <BookSection />
+   913→        <AuthorSection />
+   914→        <TrailerSection />
+   915→        <CTASection />
+   916→      </main>
+   917→      <Footer />
+   918→    </div>
+   919→  );
+   920→}
